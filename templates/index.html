@@ -22,11 +22,13 @@
             <p id="test-instruction">마이크에 "{{ test_sentence }}"라고 말해주세요.</p>
             <button id="test-mic-btn">마이크 테스트</button>
             <p id="mic-status"></p>
+            <button id="next-button">다음</button> <!-- 페이지 전환 버튼 추가 -->
         </div>
 
         <!-- Game Start Page -->
         <div id="game-start-page" class="page">
             <img src="{{ url_for('static', filename='images/game_start.png') }}" alt="게임 시작" id="game-start-image">
+            <button id="next-button">다음</button> <!-- 페이지 전환 버튼 추가 -->
         </div>
 
         <!-- Round Page -->
@@ -35,6 +37,7 @@
             <div id="countdown">5</div>
             <p id="game-text"></p>
             <p id="game-status"></p>
+            <button id="next-button">다음</button> <!-- 페이지 전환 버튼 추가 -->
         </div>
 
         <!-- Score Submission Page -->
@@ -53,6 +56,7 @@
                 <button type="submit">제출</button>
             </form>
             <button id="retry-btn">다시하기</button>
+            <button id="next-button">다음</button> <!-- 페이지 전환 버튼 추가 -->
         </div>
 
         <!-- Results Page -->
@@ -64,6 +68,7 @@
                 <li>Whisper: <span id="whisper-score"></span>%</li>
             </ul>
             <button id="retry-btn-results">다시하기</button>
+            <button id="next-button">다음</button> <!-- 페이지 전환 버튼 추가 -->
         </div>
     </div>
 
