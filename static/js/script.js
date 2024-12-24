@@ -1,5 +1,21 @@
 // static/js/script.js
 
+document.addEventListener("DOMContentLoaded", function() {
+    let currentPageIndex = 0;  // 현재 활성화된 페이지 인덱스
+    const pages = document.querySelectorAll('.page'); // 모든 페이지 요소 선택
+    
+    // 첫 번째 페이지를 표시
+    pages[currentPageIndex].classList.add('active');
+
+    // 버튼 클릭 시 페이지 전환 (예시)
+    document.querySelector('#next-button').addEventListener('click', function() {
+        pages[currentPageIndex].classList.remove('active'); // 현재 페이지 숨기기
+        currentPageIndex = (currentPageIndex + 1) % pages.length; // 다음 페이지로 이동
+        pages[currentPageIndex].classList.add('active'); // 새로운 페이지 보이기
+    });
+});
+
+
 let mediaRecorder;
 let audioChunks = [];
 let currentRound = 1;
