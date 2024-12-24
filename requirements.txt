@@ -3,3 +3,4 @@ openai
 google-cloud-speech
 azure-cognitiveservices-speech
 python-dotenv
+urllib3<2.0
