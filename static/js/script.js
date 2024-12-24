@@ -125,27 +125,30 @@ function startRound(round) {
         } else {
             clearInterval(countdownInterval);
             countdownDisplay.innerText = '';
-            showSentenceAndStartRecording();
+            fetchGameSentenceAndStartRecording();
         }
     }, 1000);
 }
 
-// 문장 표시 및 녹음 시작
-function showSentenceAndStartRecording() {
-    gameText.innerText = referenceSentence;
-    gameStatus.innerText = "녹음 중...";
-
-    // 녹음 시작
-    startRecording();
-
-    // 10초 후 자동으로 녹음 종료
-    setTimeout(() => {
-        stopRecording();
-    }, 10000);
+// 게임 문장 가져오기 및 녹음 시작
+function fetchGameSentenceAndStartRecording() {
+    fetch('/get_game_sentence')
+        .then(response => response.json())
+        .then(data => {
+            const gameSentence = data.game_sentence;
+            gameText.innerText = gameSentence;
+            gameStatus.innerText = "녹음 중...";
+            startRecording(gameSentence);
+        })
+        .catch(error => {
+            console.error('Error fetching game sentence:', error);
+            alert("게임 문장 가져오기 실패!");
+            gameStatus.innerText = "오류 발생!";
+        });
 }
 
 // 녹음 시작 함수
-function startRecording() {
+function startRecording(gameSentence) {
     audioChunks = [];
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
@@ -162,14 +165,20 @@ function startRecording() {
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = () => {
                     const base64data = reader.result;
-                    sendAudio(base64data);
+                    sendAudio(base64data, gameSentence);
                 };
                 audioChunks = [];
             };
+
+            // 10초 후 자동으로 녹음 종료
+            setTimeout(() => {
+                stopRecording();
+            }, 10000); // 10초
         })
         .catch(error => {
             console.error('Error accessing media devices.', error);
             alert("마이크 접근에 실패했습니다.");
+            gameStatus.innerText = "오류 발생!";
         });
 }
 
@@ -182,7 +191,7 @@ function stopRecording() {
 }
 
 // 오디오 데이터 서버로 전송
-function sendAudio(audioData) {
+function sendAudio(audioData, referenceSentence) {
     fetch('/process', {
         method: 'POST',
         headers: {
@@ -195,6 +204,11 @@ function sendAudio(audioData) {
     })
     .then(response => response.json())
     .then(data => {
+        if (data.error) {
+            console.error('Error:', data.error);
+            gameStatus.innerText = "오류 발생!";
+            return;
+        }
         const { scores, difficulty } = data;
         totalScore += scores.Whisper;
         displayRoundResult(scores.Whisper, difficulty);
@@ -210,9 +224,8 @@ function sendAudio(audioData) {
     });
 }
 
-// 라운드 결과 표시
+// 라운드 결과 표시 (콘솔 로그)
 function displayRoundResult(score, difficulty) {
-    // 라운드 결과를 실시간으로 보여주고 싶다면 추가 로직 필요
     console.log(`라운드 ${currentRound} 점수: ${score}%`);
 }
 
