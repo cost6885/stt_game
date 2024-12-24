@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>STT 게임</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>STT 게임</h1>
+        <p>다음 문장을 소리 내어 읽어주세요:</p>
+        <blockquote id="reference-sentence">{{ sentence }}</blockquote>
+        <button id="start-record-btn">녹음 시작</button>
+        <button id="stop-record-btn" disabled>녹음 중지</button>
+        <div id="status"></div>
+        <div id="results"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
