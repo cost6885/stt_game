@@ -1,5 +1,3 @@
-# app.py
-
 import os
 import json
 import random
@@ -9,6 +7,7 @@ import openai
 from difflib import SequenceMatcher
 from datetime import datetime
 import base64
+import uuid  # 안전한 파일명 생성을 위해 uuid 추가
 
 load_dotenv()
 
@@ -50,6 +49,8 @@ def index():
 @app.route('/get_game_sentence', methods=['GET'])
 def get_game_sentence():
     game_sentence = generate_sentence(game_sentences)
+    if not game_sentence:
+        return jsonify({"error": "No game sentences available"}), 500  # 게임 문장이 없을 경우 오류 처리
     return jsonify({"game_sentence": game_sentence})
 
 @app.route('/process', methods=['POST'])
@@ -69,7 +70,7 @@ def process():
         return jsonify({"error": "Invalid audio data"}), 400
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    audio_filename = f"audio_{timestamp}.wav"
+    audio_filename = f"audio_{uuid.uuid4().hex}.wav"  # uuid를 사용하여 고유한 파일명 생성
     audio_path = os.path.join("static", "audio", audio_filename)
 
     # Ensure the directory exists
@@ -108,4 +109,5 @@ def process():
     return jsonify(response)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    # 환경 변수를 이용해 배포 환경 설정
+    app.run(host='0.0.0.0', port=5000, debug=os.getenv('FLASK_ENV') == 'development')
