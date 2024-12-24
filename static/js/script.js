@@ -6,6 +6,7 @@ let currentRound = 1;
 let totalScore = 0;
 const totalRounds = 3;
 let countdownInterval;
+let gameSentence = "";
 
 // 페이지 요소
 const landingPage = document.getElementById('landing-page');
@@ -31,7 +32,7 @@ const scoreForm = document.getElementById('score-form');
 const retryBtn = document.getElementById('retry-btn');
 const retryBtnResults = document.getElementById('retry-btn-results');
 
-// 초기화
+// 초기화 함수: 하나의 페이지만 활성화
 function showPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     page.classList.add('active');
@@ -59,37 +60,23 @@ function startMicTest(stream) {
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.start();
 
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const analyser = audioContext.createAnalyser();
-    const source = audioContext.createMediaStreamSource(stream);
-    source.connect(analyser);
-    analyser.fftSize = 256;
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-    function visualize() {
-        analyser.getByteFrequencyData(dataArray);
-        // 시각화 로직 추가 가능
-        requestAnimationFrame(visualize);
-    }
-
-    visualize();
+    micStatus.innerText = "마이크 테스트 중...";
 
     mediaRecorder.ondataavailable = event => {
         audioChunks.push(event.data);
     };
 
     mediaRecorder.onstop = () => {
-        // 마이크 테스트 녹음이 필요하지 않다면 생략 가능
         audioChunks = [];
-    };
-
-    // 마이크 테스트 후 바로 녹음 중지
-    setTimeout(() => {
-        mediaRecorder.stop();
         micStatus.innerText = "마이크 테스트 완료!";
         showPage(gameStartPage);
         startGameSequence();
-    }, 3000); // 3초 후 테스트 완료
+    };
+
+    // 마이크 테스트 녹음 3초 후 자동 중지
+    setTimeout(() => {
+        mediaRecorder.stop();
+    }, 3000);
 }
 
 // 게임 시작 시퀀스
@@ -135,10 +122,10 @@ function fetchGameSentenceAndStartRecording() {
     fetch('/get_game_sentence')
         .then(response => response.json())
         .then(data => {
-            const gameSentence = data.game_sentence;
+            gameSentence = data.game_sentence;
             gameText.innerText = gameSentence;
             gameStatus.innerText = "녹음 중...";
-            startRecording(gameSentence);
+            startRecording();
         })
         .catch(error => {
             console.error('Error fetching game sentence:', error);
@@ -148,7 +135,7 @@ function fetchGameSentenceAndStartRecording() {
 }
 
 // 녹음 시작 함수
-function startRecording(gameSentence) {
+function startRecording() {
     audioChunks = [];
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
@@ -170,7 +157,7 @@ function startRecording(gameSentence) {
                 audioChunks = [];
             };
 
-            // 10초 후 자동으로 녹음 종료
+            // 10초 후 자동으로 녹음 중지
             setTimeout(() => {
                 stopRecording();
             }, 10000); // 10초
@@ -268,6 +255,7 @@ retryBtn.addEventListener('click', () => {
     showPage(landingPage);
 });
 
+// 결과 페이지의 다시하기 버튼 클릭 시 초기화
 retryBtnResults.addEventListener('click', () => {
     resetGame();
     showPage(landingPage);
@@ -277,6 +265,7 @@ retryBtnResults.addEventListener('click', () => {
 function resetGame() {
     currentRound = 1;
     totalScore = 0;
+    gameSentence = "";
     gameText.innerText = '';
     gameStatus.innerText = '';
     countdownDisplay.innerText = '';
