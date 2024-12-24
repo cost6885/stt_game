@@ -1,0 +1,26 @@
+# Python 관련
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# 환경 변수 파일
+.env
+
+# Nginx 소켓 파일
+*.sock
+
+# 로그 파일
+*.log
+
+# 기타 OS 관련
+.DS_Store
+Thumbs.db
+
+# IDE 관련 (예: VSCode)
+.vscode/
