@@ -143,6 +143,10 @@ function fetchGameSentenceAndStartRecording() {
         .then(response => response.json())
         .then(data => {
             gameSentence = data.game_sentence;
+            if (!gameSentence) {
+                gameStatus.innerText = "게임 문장이 없습니다.";
+                return;
+            }
             gameText.innerText = gameSentence;
             gameStatus.innerText = "녹음 중...";
             startRecording();
@@ -214,82 +218,46 @@ function stopRecording() {
 function sendAudio(audioData, referenceSentence) {
     fetch('/process', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            audio: audioData,
-            reference: referenceSentence
-        })
+        body: JSON.stringify({ audio_data: audioData, reference_sentence: referenceSentence }),
+        headers: { 'Content-Type': 'application/json' }
     })
     .then(response => response.json())
     .then(data => {
-        if (data.error) {
-            console.error('Error:', data.error);
-            gameStatus.innerText = "오류 발생!";
-            return;
-        }
-        const { scores, difficulty } = data;
-        totalScore += scores.Whisper;
-        displayRoundResult(scores.Whisper, difficulty);
-        currentRound++;
-        // 다음 라운드 시작
-        setTimeout(() => {
-            startRound(currentRound);
-        }, 2000); // 2초 후 다음 라운드
+        processResult(data);
     })
     .catch(error => {
-        console.error('Error:', error);
-        gameStatus.innerText = "오류 발생!";
+        console.error('Error sending audio:', error);
     });
 }
 
-// 라운드 결과 표시 (콘솔 로그)
-function displayRoundResult(score, difficulty) {
-    console.log(`라운드 ${currentRound} 점수: ${score}%`);
+// 게임 결과 처리 함수
+function processResult(data) {
+    const score = data.score;
+    totalScore += score;
+    totalScoreDisplay.innerText = totalScore;
+    whisperScoreDisplay.innerText = score;
+    
+    nextRound();
 }
 
-// 게임 종료 함수
-function endGame() {
-    showPage(scorePage);
-    totalScoreDisplay.innerText = totalScore.toFixed(2);
-}
-
-// 점수 제출 폼 처리
-scoreForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const company = document.getElementById('company').value;
-    const employeeId = document.getElementById('employee-id').value;
-    const name = document.getElementById('name').value;
-
-    // 제출 로직 (서버로 전송 등) 추가 가능
-    alert(`회사명: ${company}\n사번: ${employeeId}\n이름: ${name}\n총 점수: ${totalScore.toFixed(2)}%`);
-
-    // 결과 페이지로 이동
-    showPage(resultsPage);
-    difficultyDisplay.innerText = calculateDifficulty();
-    whisperScoreDisplay.innerText = totalScore.toFixed(2);
-});
-
-// 난이도 계산 함수
-function calculateDifficulty() {
-    if (totalScore < 50) {
-        return "쉬움";
-    } else if (totalScore < 80) {
-        return "보통";
+// 라운드 종료 후 처리
+function nextRound() {
+    if (currentRound >= totalRounds) {
+        endGame();
     } else {
-        return "어려움";
+        currentRound++;
+        startRound(currentRound);
     }
 }
 
-// 재시작 버튼 클릭 시
-retryBtn.addEventListener('click', () => {
-    currentRound = 1;
-    totalScore = 0;
-    showPage(landingPage);
-});
+// 게임 종료
+function endGame() {
+    showPage(scorePage);
+    totalScoreDisplay.innerText = totalScore;
+    difficultyDisplay.innerText = "쉬움"; // 난이도는 예시로 '쉬움'으로 설정
+}
 
-// 결과 페이지에서 재시작 버튼 클릭 시
+// 결과 페이지로 전환
 retryBtnResults.addEventListener('click', () => {
     currentRound = 1;
     totalScore = 0;
