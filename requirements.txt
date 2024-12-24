@@ -1,0 +1,5 @@
+Flask
+openai
+google-cloud-speech
+azure-cognitiveservices-speech
+python-dotenv
