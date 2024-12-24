@@ -7,6 +7,8 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import openai
 from difflib import SequenceMatcher
+from datetime import datetime
+import base64
 
 load_dotenv()
 
@@ -20,25 +22,34 @@ openai.api_key = OPENAI_API_KEY
 
 # Load sentences
 with open('sentences.json', 'r', encoding='utf-8') as f:
-    sentences = json.load(f)
+    sentences_data = json.load(f)
 
-def generate_sentence():
-    return random.choice(sentences)
+test_sentences = sentences_data.get("test_sentences", ["인생을 맛있게"])
+game_sentences = sentences_data.get("game_sentences", [])
+
+def generate_sentence(sentence_list):
+    return random.choice(sentence_list) if sentence_list else ""
 
 def compare_sentences(reference, user_input):
     matcher = SequenceMatcher(None, reference, user_input)
     return matcher.ratio() * 100  # Return similarity percentage
 
 def transcribe_with_whisper(audio_path):
-    # Whisper API는 OpenAI의 API로 가정
+    # Whisper API 호출
     audio_file = open(audio_path, "rb")
     transcript = openai.Audio.transcribe("whisper-1", audio_file)
+    audio_file.close()
     return transcript['text']
 
 @app.route('/')
 def index():
-    sentence = generate_sentence()
-    return render_template('index.html', sentence=sentence)
+    test_sentence = generate_sentence(test_sentences)
+    return render_template('index.html', test_sentence=test_sentence)
+
+@app.route('/get_game_sentence', methods=['GET'])
+def get_game_sentence():
+    game_sentence = generate_sentence(game_sentences)
+    return jsonify({"game_sentence": game_sentence})
 
 @app.route('/process', methods=['POST'])
 def process():
@@ -46,10 +57,10 @@ def process():
     audio_data = data.get('audio')  # Base64 encoded audio
     reference_sentence = data.get('reference')
 
-    # Save audio data to a file
-    import base64
-    from datetime import datetime
+    if not audio_data or not reference_sentence:
+        return jsonify({"error": "Invalid data"}), 400
 
+    # Save audio data to a file
     audio_bytes = base64.b64decode(audio_data.split(',')[1])
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     audio_filename = f"audio_{timestamp}.wav"
@@ -62,7 +73,10 @@ def process():
         f.write(audio_bytes)
 
     # Transcribe using Whisper
-    whisper_text = transcribe_with_whisper(audio_path)
+    try:
+        whisper_text = transcribe_with_whisper(audio_path)
+    except Exception as e:
+        return jsonify({"error": f"Transcription failed: {str(e)}"}), 500
 
     # Compare with reference
     whisper_score = compare_sentences(reference_sentence, whisper_text)
@@ -89,4 +103,4 @@ def process():
     return jsonify(response)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=False)
