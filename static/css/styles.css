@@ -5,14 +5,20 @@ body {
     background-color: #f0f8ff;
     margin: 0;
     padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
 }
 
 .container {
     width: 100%;
     max-width: 800px;
-    margin: auto;
     padding: 20px;
     text-align: center;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    background-color: #ffffff;
+    border-radius: 10px;
 }
 
 .page {
@@ -32,6 +38,7 @@ button {
     background-color: #4CAF50;
     color: white;
     border-radius: 5px;
+    transition: background-color 0.3s ease;
 }
 
 button:hover {
@@ -76,4 +83,5 @@ form input {
 #game-start-image {
     width: 200px;
     height: auto;
+    margin-top: 20px;
 }
