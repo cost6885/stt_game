@@ -1,21 +1,76 @@
+<!-- templates/index.html -->
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>STT 게임</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <title>Speech To Text 게임</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div class="container">
-        <h1>STT 게임</h1>
-        <p>다음 문장을 소리 내어 읽어주세요:</p>
-        <blockquote id="reference-sentence">{{ sentence }}</blockquote>
-        <button id="start-record-btn">녹음 시작</button>
-        <button id="stop-record-btn" disabled>녹음 중지</button>
-        <div id="status"></div>
-        <div id="results"></div>
+        <!-- Landing Page -->
+        <div id="landing-page" class="page active">
+            <h1>Speech To Text 게임</h1>
+            <p>게임 방법: 5초 뒤 문장이 나타납니다. 해당 문장을 또박또박 정확하게 읽어보세요.</p>
+            <button id="start-game-btn">게임 준비</button>
+        </div>
+
+        <!-- Microphone Test Page -->
+        <div id="mic-test-page" class="page">
+            <h2>마이크 테스트</h2>
+            <p>마이크에 "인생을 맛있게"라고 말해주세요.</p>
+            <button id="test-mic-btn">마이크 테스트</button>
+            <p id="mic-status"></p>
+        </div>
+
+        <!-- Game Start Page -->
+        <div id="game-start-page" class="page">
+            <img src="{{ url_for('static', filename='images/game_start.png') }}" alt="게임 시작" id="game-start-image">
+        </div>
+
+        <!-- Round Page -->
+        <div id="round-page" class="page">
+            <h2 id="round-title">라운드 1</h2>
+            <div id="countdown">5</div>
+            <p id="game-text"></p>
+            <p id="game-status"></p>
+        </div>
+
+        <!-- Score Submission Page -->
+        <div id="score-page" class="page">
+            <h2>총 점수: <span id="total-score">0</span></h2>
+            <form id="score-form">
+                <label for="company">회사명:</label>
+                <input type="text" id="company" name="company" required><br>
+
+                <label for="employee-id">사번:</label>
+                <input type="text" id="employee-id" name="employee-id" required><br>
+
+                <label for="name">이름:</label>
+                <input type="text" id="name" name="name" required><br>
+
+                <button type="submit">제출</button>
+            </form>
+            <button id="retry-btn">다시하기</button>
+        </div>
+
+        <!-- Results Page -->
+        <div id="results-page" class="page">
+            <h2>결과</h2>
+            <p><strong>난이도:</strong> <span id="difficulty"></span></p>
+            <h3>점수:</h3>
+            <ul>
+                <li>Whisper: <span id="whisper-score"></span>%</li>
+            </ul>
+            <button id="retry-btn-results">다시하기</button>
+        </div>
     </div>
 
+    <script>
+        // 게임에 사용할 문장 (Flask에서 전달)
+        const referenceSentence = "{{ sentence }}";
+    </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
