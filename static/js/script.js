@@ -48,7 +48,7 @@ const scoreForm = document.getElementById('score-form');
 const retryBtn = document.getElementById('retry-btn');
 const retryBtnResults = document.getElementById('retry-btn-results');
 
-// 초기화 함수: 하나의 페이지만 활성화
+// 페이지 초기화 함수: 하나의 페이지만 활성화
 function showPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     page.classList.add('active');
@@ -73,7 +73,7 @@ testMicBtn.addEventListener('click', async () => {
 
 // 마이크 테스트 함수
 function startMicTest(stream) {
-    let audioChunks = [];
+    audioChunks = [];
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.start();
 
@@ -274,30 +274,23 @@ scoreForm.addEventListener('submit', (e) => {
 
 // 난이도 계산 함수
 function calculateDifficulty() {
-    if (totalScore > 90) {
-        return "초급";
-    } else if (totalScore > 70) {
-        return "중급";
+    if (totalScore >= 80) {
+        return '쉬움';
+    } else if (totalScore >= 50) {
+        return '보통';
     } else {
-        return "고급";
+        return '어려움';
     }
 }
 
-// 다음 라운드로 넘어가는 함수 (말하지 않았을 때)
-function nextRound() {
-    currentRound++;
-    if (currentRound > totalRounds) {
-        endGame();
-    } else {
-        setTimeout(() => {
-            startRound(currentRound);
-        }, 2000); // 2초 후 다음 라운드
-    }
-}
-
-// 다시 시도 버튼 처리
+// 재시도 버튼 (게임 결과 페이지)
 retryBtn.addEventListener('click', () => {
-    totalScore = 0;
     currentRound = 1;
-    showPage(gameStartPage);
+    totalScore = 0;
+    showPage(landingPage);
+});
+retryBtnResults.addEventListener('click', () => {
+    currentRound = 1;
+    totalScore = 0;
+    showPage(landingPage);
 });
