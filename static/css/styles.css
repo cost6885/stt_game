@@ -28,6 +28,14 @@ button {
     font-size: 16px;
     margin: 10px;
     cursor: pointer;
+    border: none;
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: #45a049;
 }
 
 #countdown {
@@ -53,6 +61,7 @@ form {
 
 form label {
     margin: 5px 0;
+    font-weight: bold;
 }
 
 form input {
@@ -60,6 +69,8 @@ form input {
     margin-bottom: 10px;
     width: 80%;
     max-width: 400px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
 }
 
 #game-start-image {
