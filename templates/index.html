@@ -1,11 +1,106 @@
-<!-- templates/index.html -->
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <title>Speech To Text 게임</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* 기본 스타일 초기화 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.5;
+            background-color: #f4f4f4;
+        }
+
+        /* 컨테이너 설정 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 각 페이지 스타일 */
+        .page {
+            display: none; /* 기본적으로 모든 페이지를 숨깁니다 */
+        }
+
+        .page.active {
+            display: block; /* active 클래스를 가진 페이지만 보이도록 합니다 */
+        }
+
+        /* 텍스트 스타일 */
+        h1, h2, h3 {
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+        }
+
+        ul {
+            list-style-type: none;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* 버튼 위치 조정 */
+        button#next-button {
+            margin-top: 20px;
+        }
+
+        /* 입력 폼 스타일 */
+        input[type="text"] {
+            padding: 8px;
+            margin-bottom: 10px;
+            width: 100%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        form {
+            margin-top: 20px;
+        }
+
+        form label {
+            font-size: 16px;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        /* 게임 화면 */
+        #countdown {
+            font-size: 40px;
+            font-weight: bold;
+            color: red;
+        }
+
+        /* 결과 페이지 스타일 */
+        #results-page ul {
+            margin-top: 10px;
+        }
+
+        #results-page li {
+            font-size: 18px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
