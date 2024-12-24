@@ -35,11 +35,12 @@ def compare_sentences(reference, user_input):
     return matcher.ratio() * 100  # Return similarity percentage
 
 def transcribe_with_whisper(audio_path):
-    # Whisper API 호출
-    audio_file = open(audio_path, "rb")
-    transcript = openai.Audio.transcribe("whisper-1", audio_file)
-    audio_file.close()
-    return transcript['text']
+    try:
+        transcript = openai.Audio.transcribe("whisper-1", open(audio_path, "rb"))
+        return transcript['text']
+    except Exception as e:
+        print(f"Whisper API Error: {e}")
+        return None
 
 @app.route('/')
 def index():
@@ -61,7 +62,12 @@ def process():
         return jsonify({"error": "Invalid data"}), 400
 
     # Save audio data to a file
-    audio_bytes = base64.b64decode(audio_data.split(',')[1])
+    try:
+        audio_bytes = base64.b64decode(audio_data.split(',')[1])
+    except Exception as e:
+        print(f"Audio Decoding Error: {e}")
+        return jsonify({"error": "Invalid audio data"}), 400
+
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     audio_filename = f"audio_{timestamp}.wav"
     audio_path = os.path.join("static", "audio", audio_filename)
@@ -73,10 +79,9 @@ def process():
         f.write(audio_bytes)
 
     # Transcribe using Whisper
-    try:
-        whisper_text = transcribe_with_whisper(audio_path)
-    except Exception as e:
-        return jsonify({"error": f"Transcription failed: {str(e)}"}), 500
+    whisper_text = transcribe_with_whisper(audio_path)
+    if whisper_text is None:
+        return jsonify({"error": "Transcription failed"}), 500
 
     # Compare with reference
     whisper_score = compare_sentences(reference_sentence, whisper_text)
