@@ -15,13 +15,19 @@
             font-family: Arial, sans-serif;
             line-height: 1.5;
             background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
         }
 
         /* 컨테이너 설정 */
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: 600px;
+            width: 100%;
             padding: 20px;
+            box-sizing: border-box;
         }
 
         /* 각 페이지 스타일 */
@@ -36,16 +42,15 @@
         /* 텍스트 스타일 */
         h1, h2, h3 {
             margin-bottom: 10px;
+            text-align: center;
         }
 
         p {
             margin-bottom: 15px;
+            font-size: 18px;
         }
 
-        ul {
-            list-style-type: none;
-        }
-
+        /* 버튼 스타일 */
         button {
             padding: 10px 20px;
             font-size: 16px;
@@ -55,15 +60,11 @@
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
+            margin-top: 20px;
         }
 
         button:hover {
             background-color: #0056b3;
-        }
-
-        /* 버튼 위치 조정 */
-        button#next-button {
-            margin-top: 20px;
         }
 
         /* 입력 폼 스타일 */
@@ -87,7 +88,7 @@
 
         /* 게임 화면 */
         #countdown {
-            font-size: 40px;
+            font-size: 80px;
             font-weight: bold;
             color: red;
         }
@@ -99,6 +100,11 @@
 
         #results-page li {
             font-size: 18px;
+        }
+
+        /* 숨김 처리된 텍스트 */
+        .hidden {
+            display: none;
         }
     </style>
 </head>
@@ -115,24 +121,24 @@
         <div id="mic-test-page" class="page">
             <h2>마이크 테스트</h2>
             <p id="test-instruction">마이크에 "{{ test_sentence }}"라고 말해주세요.</p>
-            <button id="test-mic-btn">마이크 테스트</button>
+            <button id="test-mic-btn">말하기</button> <!-- 버튼 텍스트 수정 -->
             <p id="mic-status"></p>
-            <button id="next-button">다음</button> <!-- 페이지 전환 버튼 추가 -->
+            <button id="next-button">다시하기</button> <!-- 페이지 전환 버튼 추가 -->
         </div>
 
         <!-- Game Start Page -->
         <div id="game-start-page" class="page">
             <img src="{{ url_for('static', filename='images/game_start.png') }}" alt="게임 시작" id="game-start-image">
-            <button id="next-button">다음</button> <!-- 페이지 전환 버튼 추가 -->
+            <button id="next-button">다시하기</button> <!-- 페이지 전환 버튼 추가 -->
         </div>
 
         <!-- Round Page -->
         <div id="round-page" class="page">
             <h2 id="round-title">라운드 1</h2>
             <div id="countdown">5</div>
-            <p id="game-text"></p>
+            <p id="game-text" class="hidden"></p> <!-- 게임 텍스트는 숨김 처리 -->
             <p id="game-status"></p>
-            <button id="next-button">다음</button> <!-- 페이지 전환 버튼 추가 -->
+            <button id="retry-btn">다시하기</button>
         </div>
 
         <!-- Score Submission Page -->
@@ -151,7 +157,6 @@
                 <button type="submit">제출</button>
             </form>
             <button id="retry-btn">다시하기</button>
-            <button id="next-button">다음</button> <!-- 페이지 전환 버튼 추가 -->
         </div>
 
         <!-- Results Page -->
@@ -163,13 +168,22 @@
                 <li>Whisper: <span id="whisper-score"></span>%</li>
             </ul>
             <button id="retry-btn-results">다시하기</button>
-            <button id="next-button">다음</button> <!-- 페이지 전환 버튼 추가 -->
         </div>
     </div>
 
     <script>
         // 마이크 테스트 문장
         const testSentence = "{{ test_sentence }}";
+
+        // 다시하기 버튼 클릭 시 초기 페이지로 돌아가게 하기
+        document.querySelectorAll("#retry-btn, #retry-btn-results").forEach(button => {
+            button.addEventListener("click", function() {
+                // 모든 페이지 숨기기
+                document.querySelectorAll(".page").forEach(page => page.classList.remove("active"));
+                // 초기 페이지 표시
+                document.getElementById("landing-page").classList.add("active");
+            });
+        });
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
