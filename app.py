@@ -1,3 +1,5 @@
+# app.py
+
 import os
 import json
 import random
@@ -71,7 +73,6 @@ def process():
     }
 
     # Determine difficulty level
-    # 예: 점수에 따라 난이도 설정
     difficulty = ""
     if whisper_score > 90:
         difficulty = "초급"
