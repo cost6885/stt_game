@@ -1,0 +1,36 @@
+/* static/css/styles.css */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    text-align: center;
+    padding: 50px;
+}
+
+.container {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+button {
+    padding: 10px 20px;
+    margin: 10px;
+    font-size: 16px;
+}
+
+#reference-sentence {
+    font-size: 20px;
+    margin: 20px 0;
+    color: #333;
+}
+
+#status {
+    margin-top: 20px;
+    font-weight: bold;
+}
+
+#results {
+    margin-top: 30px;
+    text-align: left;
+}
