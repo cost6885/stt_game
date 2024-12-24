@@ -15,7 +15,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-
 let mediaRecorder;
 let audioChunks = [];
 let currentRound = 1;
@@ -272,25 +271,27 @@ scoreForm.addEventListener('submit', (e) => {
     whisperScoreDisplay.innerText = totalScore.toFixed(2);
 });
 
-// 난이도 계산 함수
+// 난이도 계산
 function calculateDifficulty() {
-    if (totalScore >= 80) {
+    if (totalScore > 80) {
         return '쉬움';
-    } else if (totalScore >= 50) {
+    } else if (totalScore > 60) {
         return '보통';
     } else {
         return '어려움';
     }
 }
 
-// 재시도 버튼 (게임 결과 페이지)
+// 재시도 버튼
 retryBtn.addEventListener('click', () => {
-    currentRound = 1;
     totalScore = 0;
+    currentRound = 1;
     showPage(landingPage);
 });
+
+// 결과 페이지에서 재시도 버튼
 retryBtnResults.addEventListener('click', () => {
-    currentRound = 1;
     totalScore = 0;
+    currentRound = 1;
     showPage(landingPage);
 });
