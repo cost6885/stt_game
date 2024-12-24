@@ -57,6 +57,7 @@ testMicBtn.addEventListener('click', async () => {
 
 // 마이크 테스트 함수
 function startMicTest(stream) {
+    let audioChunks = [];
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.start();
 
@@ -67,10 +68,14 @@ function startMicTest(stream) {
     };
 
     mediaRecorder.onstop = () => {
-        audioChunks = [];
-        micStatus.innerText = "마이크 테스트 완료!";
-        showPage(gameStartPage);
-        startGameSequence();
+        // 만약 audioChunks에 데이터가 없으면 마이크 테스트 완료하지 않음
+        if (audioChunks.length === 0) {
+            micStatus.innerText = "입력이 감지되지 않았습니다. 다시 시도해주세요.";
+        } else {
+            micStatus.innerText = "마이크 테스트 완료!";
+            showPage(gameStartPage);
+            startGameSequence();
+        }
     };
 
     // 마이크 테스트 녹음 3초 후 자동 중지
@@ -137,10 +142,13 @@ function fetchGameSentenceAndStartRecording() {
 // 녹음 시작 함수
 function startRecording() {
     audioChunks = [];
+    let isRecording = false;
+
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.start();
+            isRecording = true;
 
             mediaRecorder.ondataavailable = event => {
                 audioChunks.push(event.data);
@@ -157,9 +165,19 @@ function startRecording() {
                 audioChunks = [];
             };
 
+            // 타이머 설정 (10초 동안 녹음이 없으면 자동으로 실패)
+            const timeout = setTimeout(() => {
+                if (!isRecording || audioChunks.length === 0) {
+                    gameStatus.innerText = "입력 없음! 다음 라운드로 넘어갑니다.";
+                    stopRecording();
+                    nextRound();
+                }
+            }, 10000); // 10초 후 자동으로 실패
+
             // 10초 후 자동으로 녹음 중지
             setTimeout(() => {
                 stopRecording();
+                clearTimeout(timeout); // 타임아웃 해제
             }, 10000); // 10초
         })
         .catch(error => {
@@ -243,32 +261,27 @@ function calculateDifficulty() {
     if (totalScore > 90) {
         return "초급";
     } else if (totalScore > 70) {
-        return "보통";
+        return "중급";
     } else {
         return "고급";
     }
 }
 
-// 다시하기 버튼 클릭 시 초기화
-retryBtn.addEventListener('click', () => {
-    resetGame();
-    showPage(landingPage);
-});
-
-// 결과 페이지의 다시하기 버튼 클릭 시 초기화
-retryBtnResults.addEventListener('click', () => {
-    resetGame();
-    showPage(landingPage);
-});
-
-// 게임 초기화 함수
-function resetGame() {
-    currentRound = 1;
-    totalScore = 0;
-    gameSentence = "";
-    gameText.innerText = '';
-    gameStatus.innerText = '';
-    countdownDisplay.innerText = '';
-    difficultyDisplay.innerText = '';
-    whisperScoreDisplay.innerText = '';
+// 다음 라운드로 넘어가는 함수 (말하지 않았을 때)
+function nextRound() {
+    currentRound++;
+    if (currentRound > totalRounds) {
+        endGame();
+    } else {
+        setTimeout(() => {
+            startRound(currentRound);
+        }, 2000); // 2초 후 다음 라운드
+    }
 }
+
+// 다시 시도 버튼 처리
+retryBtn.addEventListener('click', () => {
+    totalScore = 0;
+    currentRound = 1;
+    showPage(gameStartPage);
+});
