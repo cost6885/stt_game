@@ -1,13 +1,9 @@
-# app.py
-
 import os
 import json
 import random
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import openai
-from google.cloud import speech_v1p1beta1 as speech
-import azure.cognitiveservices.speech as speechsdk
 from difflib import SequenceMatcher
 
 load_dotenv()
@@ -16,9 +12,6 @@ app = Flask(__name__)
 
 # Load API Keys
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY")
-AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION")
 
 # Set OpenAI API Key
 openai.api_key = OPENAI_API_KEY
@@ -39,29 +32,6 @@ def transcribe_with_whisper(audio_path):
     audio_file = open(audio_path, "rb")
     transcript = openai.Audio.transcribe("whisper-1", audio_file)
     return transcript['text']
-
-def transcribe_with_google(audio_path):
-    client = speech.SpeechClient.from_service_account_json(GOOGLE_APPLICATION_CREDENTIALS)
-    with open(audio_path, "rb") as audio_file:
-        content = audio_file.read()
-    audio = speech.RecognitionAudio(content=content)
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        language_code="ko-KR",
-    )
-    response = client.recognize(config=config, audio=audio)
-    transcripts = [result.alternatives[0].transcript for result in response.results]
-    return " ".join(transcripts)
-
-def transcribe_with_azure(audio_path):
-    speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_KEY, region=AZURE_SPEECH_REGION)
-    audio_input = speechsdk.AudioConfig(filename=audio_path)
-    speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, language="ko-KR", audio_config=audio_input)
-    result = speech_recognizer.recognize_once()
-    if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-        return result.text
-    else:
-        return ""
 
 @app.route('/')
 def index():
@@ -92,30 +62,20 @@ def process():
     # Transcribe using Whisper
     whisper_text = transcribe_with_whisper(audio_path)
 
-    # Transcribe using Google
-    google_text = transcribe_with_google(audio_path)
-
-    # Transcribe using Azure
-    azure_text = transcribe_with_azure(audio_path)
-
     # Compare with reference
     whisper_score = compare_sentences(reference_sentence, whisper_text)
-    google_score = compare_sentences(reference_sentence, google_text)
-    azure_score = compare_sentences(reference_sentence, azure_text)
 
-    # Determine difficulty based on scores
+    # Determine difficulty based on score
     scores = {
-        "Whisper": whisper_score,
-        "Google": google_score,
-        "Azure": azure_score
+        "Whisper": whisper_score
     }
 
     # Determine difficulty level
-    # Assume Whisper is best, Google is moderate, Azure is challenging
+    # 예: 점수에 따라 난이도 설정
     difficulty = ""
-    if whisper_score > google_score and whisper_score > azure_score:
+    if whisper_score > 90:
         difficulty = "초급"
-    elif google_score > whisper_score and google_score > azure_score:
+    elif 70 < whisper_score <= 90:
         difficulty = "보통"
     else:
         difficulty = "고급"
