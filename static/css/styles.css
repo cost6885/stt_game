@@ -1,36 +1,68 @@
-/* static/css/styles.css */
+/* static/css/style.css */
+
 body {
     font-family: Arial, sans-serif;
-    background-color: #f0f0f0;
-    text-align: center;
-    padding: 50px;
+    background-color: #f0f8ff;
+    margin: 0;
+    padding: 0;
 }
 
 .container {
-    background-color: #fff;
-    padding: 30px;
-    border-radius: 10px;
-    display: inline-block;
+    width: 100%;
+    max-width: 800px;
+    margin: auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.page {
+    display: none;
+}
+
+.page.active {
+    display: block;
 }
 
 button {
     padding: 10px 20px;
-    margin: 10px;
     font-size: 16px;
+    margin: 10px;
+    cursor: pointer;
 }
 
-#reference-sentence {
-    font-size: 20px;
+#countdown {
+    font-size: 48px;
     margin: 20px 0;
-    color: #333;
 }
 
-#status {
-    margin-top: 20px;
-    font-weight: bold;
+#game-text {
+    font-size: 24px;
+    margin: 20px 0;
 }
 
-#results {
-    margin-top: 30px;
-    text-align: left;
+#game-status {
+    font-size: 18px;
+    color: green;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+form label {
+    margin: 5px 0;
+}
+
+form input {
+    padding: 8px;
+    margin-bottom: 10px;
+    width: 80%;
+    max-width: 400px;
+}
+
+#game-start-image {
+    width: 200px;
+    height: auto;
 }
