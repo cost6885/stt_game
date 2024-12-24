@@ -1,5 +1,6 @@
 /* static/css/style.css */
 
+/* body 스타일: 전체 페이지 중앙 정렬 */
 body {
     font-family: Arial, sans-serif;
     background-color: #f0f8ff;
@@ -12,6 +13,7 @@ body {
     overflow: hidden; /* 페이지 넘어가는 부분 숨기기 */
 }
 
+/* .container 스타일: 콘텐츠가 중앙에 배치되도록 설정 */
 .container {
     width: 100%;
     max-width: 800px; /* 최대 너비 설정 */
@@ -22,7 +24,7 @@ body {
     border-radius: 10px;
     display: flex;
     flex-direction: column;
-    align-items: center;  /* 모든 내부 콘텐츠 중앙 정렬 */
+    align-items: center;  /* 내부 콘텐츠 중앙 정렬 */
     justify-content: center;  /* 수직 중앙 정렬 */
     height: 100%;  /* 컨테이너의 높이를 화면에 맞게 설정 */
 }
@@ -30,10 +32,12 @@ body {
 /* 각 페이지별 스타일 */
 .page {
     display: none;
+    /* 기본적으로 숨기기 */
 }
 
 .page.active {
     display: block;
+    /* active 클래스를 가진 페이지만 보이도록 */
 }
 
 button {
