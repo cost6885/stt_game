@@ -9,16 +9,20 @@ body {
     justify-content: center;
     align-items: center;
     height: 100vh;
+    overflow: hidden; /* 페이지 넘어가는 부분 숨기기 */
 }
 
 .container {
     width: 100%;
-    max-width: 800px;
+    max-width: 800px; /* 최대 너비 설정 */
     padding: 20px;
     text-align: center;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     background-color: #ffffff;
     border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .page {
@@ -84,4 +88,46 @@ form input {
     width: 200px;
     height: auto;
     margin-top: 20px;
+}
+
+/* Countdown 스타일 */
+#countdown {
+    font-size: 48px;
+    font-weight: bold;
+    color: #ff0000;
+}
+
+/* 결과 페이지의 리스트 스타일 */
+#results-page ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+#results-page li {
+    font-size: 18px;
+    margin: 10px 0;
+}
+
+#landing-page h1 {
+    font-size: 32px;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+#landing-page p {
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: #555;
+}
+
+/* 미리보기 페이지 스타일 */
+#mic-test-page #test-instruction {
+    font-size: 20px;
+    color: #333;
+}
+
+#mic-test-page #mic-status {
+    margin-top: 10px;
+    color: red;
+    font-size: 16px;
 }
