@@ -19,7 +19,7 @@
         <!-- Microphone Test Page -->
         <div id="mic-test-page" class="page">
             <h2>마이크 테스트</h2>
-            <p>마이크에 "인생을 맛있게"라고 말해주세요.</p>
+            <p id="test-instruction">마이크에 "{{ test_sentence }}"라고 말해주세요.</p>
             <button id="test-mic-btn">마이크 테스트</button>
             <p id="mic-status"></p>
         </div>
@@ -69,7 +69,7 @@
 
     <script>
         // 게임에 사용할 문장 (Flask에서 전달)
-        const referenceSentence = "{{ sentence }}";
+        const testSentence = "{{ test_sentence }}";
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
