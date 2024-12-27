@@ -106,6 +106,10 @@ function sendAudioForTest(audioData, referenceSentence) {
             micStatus.innerText = "마이크 테스트 실패!";
             alert("마이크 테스트 실패!\n오류 메시지: " + data.error);
             micTestPassed = false;
+            // 테스트용을 위한 우회처리로 제거예정
+            micTestPassed = true;
+            showPage(gameStartPage);
+            startGameSequence();
             return;
         }
         const { scores, difficulty } = data;
