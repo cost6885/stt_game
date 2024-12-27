@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Speech To Text 게임</title>
-    <!-- 구글 웹폰트 (예: 나눔고딕) -->
     <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@700&display=swap" rel="stylesheet">
 
     <style>
@@ -31,17 +30,17 @@
             max-width: 600px;
             width: 100%;
             padding: 20px;
-            background-color: rgba(255, 255, 255, 0.9); /* 흰색 반투명 배경 */
-            border-radius: 10px;                       /* 모서리 둥글게 */
-            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);  /* 그림자 효과 */
+            background-color: rgba(255, 255, 255, 0.9); 
+            border-radius: 10px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
         }
 
         /* 페이지 전환 구조 */
         .page {
-            display: none; /* 기본적으로 모든 페이지를 숨김 */
+            display: none;
         }
         .page.active {
-            display: block; /* active 클래스를 가진 페이지만 보이도록 함 */
+            display: block;
         }
 
         /* 텍스트 스타일 */
@@ -57,7 +56,7 @@
         #test-instruction {
             font-size: 24px;
             font-weight: bold;
-            color: #cc0000; /* 붉은색 포인트 */
+            color: #cc0000;
         }
 
         /* 게임 문구 크게 + 강조 */
@@ -75,24 +74,22 @@
 
         /* 버튼 기본 스타일 */
         button {
-            padding: 14px 24px;           /* 버튼의 세로, 가로 여백 */
-            font-size: 16px;             /* 글자 크기 */
-            background-color: #007bff;   /* 기본 색상(파란색) */
-            color: white;                /* 글자색 흰색 */
-            border: none;                /* 테두리 없음 */
-            border-radius: 8px;          /* 살짝 둥근 모서리 */
-            cursor: pointer;             /* 마우스 커서 모양(포인터) */
-            transition: background-color 0.3s, transform 0.3s; /* 호버 시 부드러운 전환 */
-            margin-top: 20px;            /* 위쪽 여백 */
+            padding: 14px 24px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            margin-top: 20px;
         }
-
-        /* 버튼 호버 효과 */
         button:hover {
-            background-color: #0056b3;  /* 호버 시 더 진한 파란색 */
-            transform: translateY(-2px); /* 살짝 위로 이동 */
+            background-color: #0056b3;
+            transform: translateY(-2px);
         }
 
-        /* 점수 페이지 / 결과 페이지 텍스트 */
+        /* 카운트다운 */
         #countdown {
             font-size: 80px;
             font-weight: bold;
@@ -100,50 +97,27 @@
             margin-bottom: 10px;
         }
 
-        #total-score {
-            font-size: 30px;
-            color: #d9534f; /* 붉은색 강조 (Bootstrap danger 색상 예시) */
+        /* 라운드 결과 / 점수 표시 */
+        .score-feedback {
+            font-size: 26px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .score-feedback.good {
+            color: green;
+        }
+        .score-feedback.normal {
+            color: orange;
+        }
+        .score-feedback.bad {
+            color: red;
         }
 
-        #difficulty, #whisper-score {
-            font-size: 24px;
-            color: #111;  /* 진한 회색 */
+        #mic-status {
+            padding-top: 20px;
         }
 
-        /* Game Start 이미지 */
-        #game-start-image {
-            width: 400px; 
-            margin: 0 auto;
-            display: block;
-        }
-
-        /* 결과 페이지 스타일 */
-        #results-page ul {
-            margin-top: 10px;
-        }
-        #results-page li {
-            font-size: 18px;
-            line-height: 1.6;
-        }
-
-        /* 입력 폼 스타일 */
-        input[type="text"] {
-            padding: 10px;
-            margin-bottom: 10px;
-            width: 100%;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        form {
-            margin-top: 20px;
-        }
-        form label {
-            font-size: 16px;
-            margin-bottom: 5px;
-            display: block;
-        }
-                /* 라운드 피드백 페이지 */
+        /* 라운드 피드백 페이지 */
         #round-feedback-page h2 {
             font-size: 24px;
             margin-bottom: 15px;
@@ -160,27 +134,12 @@
             color: red; /* 인식이 틀린 부분 빨간색 */
             font-weight: bold;
         }
-        .score-feedback {
-            font-size: 26px;
-            margin: 15px 0;
-            font-weight: bold;
-        }
-        .score-feedback.good {
-            color: green;
-        }
-        .score-feedback.normal {
-            color: orange;
-        }
-        .score-feedback.bad {
-            color: red;
-        }
-        #mic-status {
-        padding-top: 20px;
-        }
+
+        /* 폼 컨테이너 (score-page 대신 사용) */
         #formContainer {
             text-align: center;
             font-size: 20px;
-            position: absolute;
+            position: absolute; 
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
@@ -201,7 +160,6 @@
             color: white;
             padding: 5px 10px;
             text-align: center;
-            text-decoration: none;
             display: inline-block;
             font-size: 20px;
             margin: 8px 4px;
@@ -215,6 +173,7 @@
             border: 2px solid #4CAF50;
             cursor: pointer;
         }
+
     </style>
 </head>
 <body>
@@ -254,70 +213,50 @@
         <!-- Round Feedback Page -->
         <div id="round-feedback-page" class="page">
             <h2>라운드 결과</h2>
-            <!-- 음성 재생 버튼 / 플레이어 -->
             <div class="feedback-audio">
                 <audio id="recorded-audio" controls></audio>
             </div>
-            <!-- 실제로 인식된 텍스트와 원문 비교 표시 -->
             <p class="feedback-text">원문: <span id="original-text"></span></p>
             <p class="feedback-text">인식: <span id="recognized-text"></span></p>
             <p class="score-feedback" id="score-feedback-text"></p>
             <button id="next-round-btn">다음 라운드</button>
         </div>
-
-        <!-- Score Submission Page -->
-        <div id="score-page" class="page">
-            <h2>총 점수: <span id="total-score">0</span></h2>
-            <form id="score-form">
-                <label for="company">회사:
-                    <select id="company">
-                        <option value="">회사를 선택하세요</option>
-                        <option value="농심">농심</option>
-                        <option value="농심태경">농심태경</option>
-                        <option value="율촌화학">율촌화학</option>
-                        <option value="메가마트">메가마트</option>
-                        <option value="농심엔지니어링">농심엔지니어링</option>
-                        <option value="엔디에스">엔디에스</option>
-                        <option value="농심미분">농심미분</option>
-                        <option value="호텔농심">호텔농심</option>
-                        <option value="농심홀딩스">농심홀딩스</option>
-                        <option value="농심캐피탈">농심캐피탈</option>
-                        <option value="이스턴웰스">이스턴웰스</option>
-                        <option value="뉴테라닉스">뉴테라닉스</option>
-                        <option value="엔에스아리아">엔에스아리아</option>
-                        <option value="농심개발">농심개발</option>
-                        <option value="율촌재단">율촌재단</option>
-                        <option value="캐처스">캐처스</option>
-                        <option value="농심이스포츠">농심이스포츠</option>
-                    </select>
-                </label><br>
-
-                <label>사번: <input type="text" id="employee-id" required></label><br>
-                
-                <label>이름: <input type="text" id="name" required></label><br>
-                
-                <button class="sendform" onclick="sendToGoogleSheets()">응모하기</button>
-
-                <button class="sendform" id="retry-btn-results" onclick="prapare()">다시하기</button>
-            </form>
-        </div>
-
     </div>
 
-    <script>
-        // 마이크 테스트 문장
-        const testSentence = "{{ test_sentence }}";
+    <!-- formContainer: 최종 점수 제출을 위한 폼 -->
+    <div id="formContainer">
+        <h2>총 점수: <span id="final-score">0</span></h2>
+        <label>회사:
+            <select id="company">
+                <option value="">회사를 선택하세요</option>
+                <option value="농심">농심</option>
+                <option value="농심태경">농심태경</option>
+                <option value="율촌화학">율촌화학</option>
+                <option value="메가마트">메가마트</option>
+                <option value="농심엔지니어링">농심엔지니어링</option>
+                <option value="엔디에스">엔디에스</option>
+                <option value="농심미분">농심미분</option>
+                <option value="호텔농심">호텔농심</option>
+                <option value="농심홀딩스">농심홀딩스</option>
+                <option value="농심캐피탈">농심캐피탈</option>
+                <option value="이스턴웰스">이스턴웰스</option>
+                <option value="뉴테라닉스">뉴테라닉스</option>
+                <option value="엔에스아리아">엔에스아리아</option>
+                <option value="농심개발">농심개발</option>
+                <option value="율촌재단">율촌재단</option>
+                <option value="캐처스">캐처스</option>
+                <option value="농심이스포츠">농심이스포츠</option>
+            </select>
+        </label><br>
 
-        // "다시하기" 버튼들 (score-page, results-page 등) 클릭 시 초기 페이지로
-        document.querySelectorAll("#retry-btn, #retry-btn-results").forEach(button => {
-            button.addEventListener("click", function() {
-                // 모든 페이지 숨기기
-                document.querySelectorAll(".page").forEach(page => page.classList.remove("active"));
-                // 초기 페이지 표시
-                document.getElementById("landing-page").classList.add("active");
-            });
-        });
-    </script>
+        <label>사번: <input type="text" id="employeeId"></label><br>
+        <label>이름: <input type="text" id="name"></label><br>
+        
+        <button class="sendform" onclick="sendToGoogleSheets()">응모하기</button>
+        <button class="sendform" onclick="prapare()">다시하기</button>
+    </div>
+
+    <!-- script.js -->
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>
