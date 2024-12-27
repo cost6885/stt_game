@@ -7,7 +7,7 @@ import openai
 from difflib import SequenceMatcher
 from datetime import datetime
 import base64
-import uuid  # 안전한 파일명 생성을 위해 uuid 추가
+import uuid
 
 load_dotenv()
 
@@ -35,6 +35,7 @@ def compare_sentences(reference, user_input):
 
 def transcribe_with_whisper(audio_path):
     try:
+        # OpenAI Audio API
         transcript = openai.Audio.transcribe("whisper-1", open(audio_path, "rb"))
         return transcript['text']
     except Exception as e:
@@ -50,19 +51,19 @@ def index():
 def get_game_sentence():
     game_sentence = generate_sentence(game_sentences)
     if not game_sentence:
-        return jsonify({"error": "No game sentences available"}), 500  # 게임 문장이 없을 경우 오류 처리
+        return jsonify({"error": "No game sentences available"}), 500
     return jsonify({"game_sentence": game_sentence})
 
 @app.route('/process', methods=['POST'])
 def process():
     data = request.get_json()
-    audio_data = data.get('audio')  # Base64 encoded audio
+    audio_data = data.get('audio')
     reference_sentence = data.get('reference')
 
     if not audio_data or not reference_sentence:
         return jsonify({"error": "Invalid data"}), 400
 
-    # Save audio data to a file
+    # Decode base64 audio
     try:
         audio_bytes = base64.b64decode(audio_data.split(',')[1])
     except Exception as e:
@@ -70,29 +71,27 @@ def process():
         return jsonify({"error": "Invalid audio data"}), 400
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    audio_filename = f"audio_{uuid.uuid4().hex}.wav"  # uuid를 사용하여 고유한 파일명 생성
+    audio_filename = f"audio_{uuid.uuid4().hex}.wav"
     audio_path = os.path.join("static", "audio", audio_filename)
 
-    # Ensure the directory exists
+    # Save audio file
     os.makedirs(os.path.dirname(audio_path), exist_ok=True)
-
     with open(audio_path, "wb") as f:
         f.write(audio_bytes)
 
-    # Transcribe using Whisper
+    # STT
     whisper_text = transcribe_with_whisper(audio_path)
     if whisper_text is None:
         return jsonify({"error": "Transcription failed"}), 500
 
-    # Compare with reference
+    # Compare
     whisper_score = compare_sentences(reference_sentence, whisper_text)
 
-    # Determine difficulty based on score
     scores = {
         "Whisper": whisper_score
     }
 
-    # Determine difficulty level
+    # 점수 등급
     difficulty = ""
     if whisper_score > 90:
         difficulty = "초급"
@@ -103,11 +102,12 @@ def process():
 
     response = {
         "scores": scores,
-        "difficulty": difficulty
+        "difficulty": difficulty,
+        "stt_text": whisper_text,  # 인식된 텍스트도 함께 반환
+        "audio_path": f"/static/audio/{audio_filename}"  # 클라이언트에서 재생 가능하도록
     }
 
     return jsonify(response)
 
 if __name__ == '__main__':
-    # 환경 변수를 이용해 배포 환경 설정
     app.run(host='0.0.0.0', port=5000, debug=os.getenv('FLASK_ENV') == 'development')
