@@ -331,7 +331,15 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
     roundPage.classList.remove('active');
     roundFeedbackPage.classList.add('active');
 
-    recordedAudioEl.src = audioPath || "";
+    // 음성 파일 로드된 후 or 라운드 피드백 표시 시점에...
+    recordedAudioEl.src = audioPath || "";    
+    recordedAudioEl.autoplay = true;  // JS로 autoplay 설정
+    recordedAudioEl.load();
+    // 재생 시도 (브라우저 정책에 따라 차단될 수 있음)
+    recordedAudioEl.play().catch(err => {
+      console.warn("자동 재생이 차단되었습니다:", err);
+    });
+    
     originalTextEl.innerHTML = reference;
     recognizedTextEl.innerHTML = highlightDifferences(reference, recognized);
 
