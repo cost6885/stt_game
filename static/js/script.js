@@ -8,6 +8,7 @@ const totalRounds = 3;
 let countdownInterval;
 let micTestPassed = false;
 
+// 기존 필드 or 문구
 const requiredTestSentence = typeof testSentence !== 'undefined' ? testSentence : "인생을 맛있게";
 
 // 페이지 요소
@@ -17,8 +18,12 @@ const gameStartPage = document.getElementById('game-start-page');
 const roundPage = document.getElementById('round-page');
 const roundFeedbackPage = document.getElementById('round-feedback-page');
 const scorePage = document.getElementById('score-page');
-const resultsPage = document.getElementById('results-page');
+// resultsPage는 제거했으므로 없음
 
+// 새로 추가한 폼 컨테이너
+const formContainer = document.getElementById('formContainer');
+
+// 버튼 / 요소
 const startGameBtn = document.getElementById('start-game-btn');
 const testMicBtn = document.getElementById('test-mic-btn');
 const micStatus = document.getElementById('mic-status');
@@ -28,43 +33,51 @@ const countdownDisplay = document.getElementById('countdown');
 const gameText = document.getElementById('game-text');
 const gameStatus = document.getElementById('game-status');
 const totalScoreDisplay = document.getElementById('total-score');
-const difficultyDisplay = document.getElementById('difficulty');
-const whisperScoreDisplay = document.getElementById('whisper-score');
 
-// 새로 추가된 피드백 페이지 요소
-const roundFeedbackPageEl = document.getElementById('round-feedback-page');
+// 라운드 피드백
 const recordedAudioEl = document.getElementById('recorded-audio');
 const originalTextEl = document.getElementById('original-text');
 const recognizedTextEl = document.getElementById('recognized-text');
 const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
 const nextRoundBtn = document.getElementById('next-round-btn');
 
+// Score Page 폼
 const scoreForm = document.getElementById('score-form');
 
-// 초기화 함수: 하나의 페이지만 active
+/** 페이지 전환 */
 function showPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     page.classList.add('active');
 }
 
-// 게임 준비 버튼
+/** 폼 컨테이너 띄우기 */
+function showFormContainer() {
+    formContainer.style.display = "block";
+}
+
+/** 폼 컨테이너 숨기기 */
+function hideFormContainer() {
+    formContainer.style.display = "none";
+}
+
+/** 시작 버튼 */
 startGameBtn.addEventListener('click', () => {
     showPage(micTestPage);
 });
 
-// 마이크 테스트 버튼
+/** 마이크 테스트 버튼 */
 testMicBtn.addEventListener('click', async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         micStatus.innerText = "마이크 연결 성공! 문장을 말해보세요...";
         startMicTest(stream);
     } catch (error) {
-        console.error('Error accessing media devices.', error);
+        console.error('Error accessing media devices:', error);
         alert("마이크 접근에 실패했습니다. 브라우저에서 마이크 권한을 허용했는지 확인해주세요.");
     }
 });
 
-// 마이크 테스트 (5초)
+/** 마이크 테스트 (5초) */
 function startMicTest(stream) {
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.start();
@@ -84,7 +97,7 @@ function startMicTest(stream) {
         };
     };
 
-    // 5초 후 마이크 테스트 종료
+    // 5초 후 자동 중지
     setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
@@ -92,7 +105,7 @@ function startMicTest(stream) {
     }, 5000);
 }
 
-// 마이크 테스트 문장 전송
+/** 마이크 테스트 문장 전송 */
 function sendAudioForTest(audioData, referenceSentence) {
     fetch('/process', {
         method: 'POST',
@@ -106,22 +119,24 @@ function sendAudioForTest(audioData, referenceSentence) {
             micStatus.innerText = "마이크 테스트 실패!";
             alert("마이크 테스트 실패!\n오류 메시지: " + data.error);
             micTestPassed = false;
-            // 테스트용을 위한 우회처리로 제거예정
+            // 테스트 편의를 위해 우회처리
             micTestPassed = true;
             showPage(gameStartPage);
             startGameSequence();
             return;
         }
-        const { scores, difficulty } = data;
+
+        const { scores } = data;
         if (!scores || typeof scores.Whisper !== 'number') {
             micStatus.innerText = "마이크 테스트 실패!";
             alert("마이크 테스트 결과가 올바르지 않습니다. 다시 시도해주세요.");
             micTestPassed = false;
             return;
         }
+
         if (scores.Whisper > 90) {
             micStatus.innerText = "마이크 테스트 성공!";
-            alert(`마이크 테스트에 성공했습니다!\n(점수: ${scores.Whisper.toFixed(2)}%)`);
+            alert(`마이크 테스트에 성공!\n(점수: ${scores.Whisper.toFixed(2)}%)`);
             micTestPassed = true;
             showPage(gameStartPage);
             startGameSequence();
@@ -134,12 +149,12 @@ function sendAudioForTest(audioData, referenceSentence) {
     .catch(error => {
         console.error('Error:', error);
         micStatus.innerText = "마이크 테스트 실패! [네트워크/서버 오류]";
-        alert(`마이크 테스트에 실패했습니다.\n오류 메시지: ${error}`);
+        alert(`마이크 테스트에 실패했습니다.\n오류: ${error}`);
         micTestPassed = false;
     });
 }
 
-// 게임 시작 시퀀스
+/** 게임 시작 시퀀스 */
 function startGameSequence() {
     if (!micTestPassed) {
         alert("마이크 테스트를 통과해야 게임을 시작할 수 있습니다.");
@@ -155,7 +170,7 @@ function startGameSequence() {
     }, 2000);
 }
 
-// 라운드 시작
+/** 라운드 시작 */
 function startRound(round) {
     if (!micTestPassed) {
         alert("마이크 테스트를 통과해야 게임을 진행할 수 있습니다.");
@@ -169,7 +184,7 @@ function startRound(round) {
     showPage(roundPage);
     roundTitle.innerText = `라운드 ${round}`;
     gameStatus.innerText = '';
-    gameText.classList.add('hidden'); // 문장 숨김
+    gameText.classList.add('hidden');
 
     let countdown = 5;
     countdownDisplay.innerText = countdown;
@@ -185,7 +200,7 @@ function startRound(round) {
     }, 1000);
 }
 
-// 게임 문장 가져오기 + 녹음
+/** 게임 문장 가져오기 + 녹음 */
 function fetchGameSentenceAndStartRecording() {
     fetch('/get_game_sentence')
         .then(response => response.json())
@@ -203,7 +218,7 @@ function fetchGameSentenceAndStartRecording() {
                 return;
             }
             gameText.innerText = gameSentence;
-            gameText.classList.remove('hidden'); 
+            gameText.classList.remove('hidden');
             gameStatus.innerText = "녹음 중...";
             startRecording(gameSentence);
         })
@@ -255,7 +270,7 @@ function stopRecording() {
     }
 }
 
-// 서버로 오디오 전송
+/** 오디오 & STT 처리 */
 function sendAudio(audioData, referenceSentence) {
     fetch('/process', {
         method: 'POST',
@@ -293,18 +308,16 @@ function sendAudio(audioData, referenceSentence) {
     });
 }
 
-// 라운드 피드백 표시
+/** 라운드 피드백 표시 */
 function showRoundFeedback(reference, recognized, score, audioPath) {
-    showPage(roundFeedbackPage);
-
-    // 오디오 재생 설정
-    recordedAudioEl.src = audioPath; // 서버에서 반환된 오디오 파일 경로
-
-    // 원문 vs 인식문 비교 → 빨간색 표시
+    showPage(document.getElementById('round-feedback-page'));
+    // 오디오 재생
+    recordedAudioEl.src = audioPath; 
+    // 원문 vs 인식문 비교
     originalTextEl.innerHTML = reference;
     recognizedTextEl.innerHTML = highlightDifferences(reference, recognized);
 
-    // GOOD / NORMAL / BAD 판단
+    // GOOD/NORMAL/BAD
     let feedbackClass = "bad";
     let feedbackText = "BAD";
     if (score > 90) {
@@ -314,12 +327,11 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
         feedbackClass = "normal";
         feedbackText = "NORMAL";
     }
-
     scoreFeedbackTextEl.className = "score-feedback " + feedbackClass;
     scoreFeedbackTextEl.textContent = `${feedbackText} ( ${score.toFixed(2)}% )`;
 }
 
-// 다음 라운드 버튼 클릭 시
+/** "다음 라운드" 버튼 */
 nextRoundBtn.addEventListener('click', () => {
     currentRound++;
     if (currentRound > totalRounds) {
@@ -329,7 +341,7 @@ nextRoundBtn.addEventListener('click', () => {
     }
 });
 
-// Transcription 실패 시 0점 처리 후 다음 라운드
+/** Transcription 실패 시 0점 처리 & 다음 라운드 */
 function handleTranscriptionFail() {
     console.warn("Transcription failed, 0점 처리 후 다음 라운드로 이동");
     currentRound++;
@@ -339,16 +351,16 @@ function handleTranscriptionFail() {
         } else {
             startRound(currentRound);
         }
-    }, 1000); // 1초 후 다음 라운드
+    }, 1000);
 }
 
-// 게임 종료
+/** 게임 종료 → Score Page */
 function endGame() {
     showPage(scorePage);
     totalScoreDisplay.innerText = totalScore.toFixed(2);
 }
 
-// 점수 폼 제출
+/** 점수 폼 제출 */
 scoreForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const company = document.getElementById('company').value;
@@ -357,22 +369,88 @@ scoreForm.addEventListener('submit', (e) => {
 
     alert(`회사명: ${company}\n사번: ${employeeId}\n이름: ${name}\n총 점수: ${totalScore.toFixed(2)}%`);
 
-    showPage(resultsPage);
-    difficultyDisplay.innerText = calculateDifficulty();
-    whisperScoreDisplay.innerText = totalScore.toFixed(2);
+    // 여기서 굳이 다른 페이지로 이동하지 않고, 
+    // 원한다면 showFormContainer()를 호출하거나, 
+    // 곧바로 응모하기로 이어질 수도 있음
 });
 
-function calculateDifficulty() {
-    const averageScore = totalScore / totalRounds;
-    if (averageScore > 90) {
-        return "초급";
-    } else if (averageScore > 70) {
-        return "보통";
-    } else {
-        return "고급";
+/** Differences 하이라이팅 */
+function highlightDifferences(original, recognized) {
+    const maxLen = Math.max(original.length, recognized.length);
+    let resultHtml = "";
+    for (let i = 0; i < maxLen; i++) {
+        const oChar = original[i] || "";
+        const rChar = recognized[i] || "";
+        if (oChar === rChar) {
+            resultHtml += rChar;
+        } else {
+            if (rChar) {
+                resultHtml += `<span class="mismatch">${rChar}</span>`;
+            }
+        }
     }
+    return resultHtml;
 }
 
+/** 폼 띄우는 예시 함수 */
+function showFormContainer() {
+    formContainer.style.display = 'block';
+}
+/** 폼 숨기기 */
+function hideFormContainer() {
+    formContainer.style.display = 'none';
+}
+
+/** sendToGoogleSheets */
+function sendToGoogleSheets() {
+    let company2 = document.getElementById('company2').value.trim();
+    let employeeId2 = document.getElementById('employeeId').value.trim();
+    let name2 = document.getElementById('name2').value.trim();
+
+    if (!company2 || !employeeId2 || !name2) {
+        alert("모든 정보를 입력해주세요!");
+        return;
+    }
+
+    let data = {
+        company2,
+        employeeId2,
+        name2,
+        totalScore: totalScore.toFixed(2),
+        time: new Date().toLocaleString()
+    };
+
+    fetch('https://script.google.com/macros/s/AKfycbXYZ/exec', {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        mode: 'cors'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Network response was not ok");
+        }
+        return response.text();
+    })
+    .then(res => {
+        console.log("응모 완료:", res);
+        alert("응모가 완료되었습니다!");
+        hideFormContainer();
+    })
+    .catch(error => {
+        console.error("응모 실패:", error);
+        alert("응모 중 오류가 발생했습니다.\n" + error);
+    });
+}
+
+/** "다시하기"와 유사한 로직 */
+function prapare() {
+    hideFormContainer();
+    resetGame();  
+    showPage(landingPage);
+}
+
+/** resetGame */
 function resetGame() {
     currentRound = 1;
     totalScore = 0;
@@ -380,43 +458,15 @@ function resetGame() {
     gameText.innerText = '';
     gameText.classList.add('hidden');
     gameStatus.innerText = '';
-    difficultyDisplay.innerText = '';
-    whisperScoreDisplay.innerText = '';
     document.getElementById('total-score').innerText = '0';
     document.getElementById('company').value = '';
     document.getElementById('employee-id').value = '';
     document.getElementById('name').value = '';
     micStatus.innerText = '';
     micTestPassed = false;
-}
 
-// 라운드, 결과 페이지에서 "다시하기" 클릭 시 → landingPage
-retryBtnResults.addEventListener('click', () => {
-    resetGame();
-    showPage(landingPage);
-});
-
-/** 
- * 원문 vs 인식문을 비교해, 다른 부분은 빨간색으로 표시
- * 간단한 방법: 두 문장을 글자 단위로 비교
- * (더 정교하게 단어 단위, 공백/마침표 처리 등 가능)
- */
-function highlightDifferences(original, recognized) {
-    const maxLen = Math.max(original.length, recognized.length);
-    let resultHtml = "";
-
-    for (let i = 0; i < maxLen; i++) {
-        const oChar = original[i] || "";
-        const rChar = recognized[i] || "";
-        if (oChar === rChar) {
-            // 같으면 그대로 표시
-            resultHtml += rChar;
-        } else {
-            // 다르면 빨간색 처리
-            if (rChar) {
-                resultHtml += `<span class="mismatch">${rChar}</span>`;
-            }
-        }
-    }
-    return resultHtml;
+    // 폼 컨테이너 초기화
+    document.getElementById('company2').value = '';
+    document.getElementById('employeeId').value = '';
+    document.getElementById('name2').value = '';
 }
