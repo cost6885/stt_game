@@ -1,9 +1,13 @@
+// static/js/script.js
+
 let mediaRecorder;
 let audioChunks = [];
 let currentRound = 1;
 let totalScore = 0;
 const totalRounds = 3;
 let countdownInterval;
+let micTestPassed = false;    // 마이크가 정상 작동 + 테스트 문구 정확 발화 확인
+const requiredTestSentence = typeof testSentence !== 'undefined' ? testSentence : "인생을 맛있게";
 
 // 페이지 요소
 const landingPage = document.getElementById('landing-page');
@@ -43,52 +47,114 @@ startGameBtn.addEventListener('click', () => {
 testMicBtn.addEventListener('click', async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        micStatus.innerText = "마이크 연결 성공!";
+        micStatus.innerText = "마이크 연결 성공! 문장을 말해보세요...";
         startMicTest(stream);
     } catch (error) {
         console.error('Error accessing media devices.', error);
-        alert("마이크 접근에 실패했습니다.");
+        alert("마이크 접근에 실패했습니다. 브라우저에서 마이크 권한을 허용했는지 확인해주세요.");
     }
 });
 
-// 마이크 테스트 (3초)
+// 마이크 테스트 (5초) 
 function startMicTest(stream) {
-    micStatus.innerText = "마이크 테스트 중...";
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.start();
+    audioChunks = [];
 
     mediaRecorder.ondataavailable = event => {
         audioChunks.push(event.data);
     };
 
     mediaRecorder.onstop = () => {
-        audioChunks = [];
-        micStatus.innerText = "마이크 테스트 완료!";
-        showPage(gameStartPage);
-        startGameSequence();
+        // 오디오 블롭 -> Base64
+        const audioBlob = new Blob(audioChunks, { 'type': 'audio/wav; codecs=PCM' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+            const base64data = reader.result;
+            // STT 전송 -> testSentence와 비교
+            sendAudioForTest(base64data, requiredTestSentence);
+        };
     };
 
-    // 3초 후 마이크 테스트 종료
+    // 5초 후 마이크 테스트 종료
     setTimeout(() => {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
         }
-    }, 3000);
+    }, 5000);
 }
 
-// 게임 시작
+// 마이크 테스트 문장 전송
+function sendAudioForTest(audioData, referenceSentence) {
+    fetch('/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audio: audioData, reference: referenceSentence })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            console.error('Error:', data.error);
+            micStatus.innerText = "마이크 테스트 실패! [오류 발생: " + data.error + "]";
+            alert("마이크 테스트 실패 (오류). 다시 시도해주세요.\n오류 메시지: " + data.error);
+            micTestPassed = false;
+            return;
+        }
+        const { scores, difficulty } = data;
+        if (!scores || typeof scores.Whisper !== 'number') {
+            micStatus.innerText = "마이크 테스트 실패! [결과 데이터 이상]";
+            alert("마이크 테스트 결과가 올바르지 않습니다. 다시 시도해주세요.");
+            micTestPassed = false;
+            return;
+        }
+        // 정확 발화 체크 (점수 기준 90% 이상 등)
+        if (scores.Whisper > 90) {
+            micStatus.innerText = "마이크 테스트 성공!";
+            alert("마이크 테스트에 성공했습니다. 정확히 말했습니다!\n(점수: " + scores.Whisper.toFixed(2) + "%)");
+            micTestPassed = true;
+            // 테스트 통과 후 게임 시작 페이지
+            showPage(gameStartPage);
+            startGameSequence();
+        } else {
+            micStatus.innerText = "마이크 테스트 실패! [문구 불일치]";
+            alert("문구를 정확히 말하지 못했습니다.\n점수: " + scores.Whisper.toFixed(2) + "%\n다시 시도하세요.");
+            micTestPassed = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        micStatus.innerText = "마이크 테스트 실패! [네트워크/서버 오류]";
+        alert("마이크 테스트에 실패했습니다.\n오류 메시지: " + error);
+        micTestPassed = false;
+    });
+}
+
+// 게임 시작 시퀀스
 function startGameSequence() {
+    if (!micTestPassed) {
+        alert("마이크 테스트를 통과해야 게임을 시작할 수 있습니다.");
+        showPage(micTestPage);
+        return;
+    }
     gameStartImage.style.display = 'block';
 
     // 2초 후 다음 단계
     setTimeout(() => {
         gameStartImage.style.display = 'none';
+        currentRound = 1;    // 혹시 모르니 라운드 재설정
+        totalScore = 0;
         startRound(currentRound);
     }, 2000);
 }
 
 // 라운드 시작
 function startRound(round) {
+    if (!micTestPassed) {
+        alert("마이크 테스트를 통과해야 게임을 진행할 수 있습니다.");
+        showPage(micTestPage);
+        return;
+    }
     if (round > totalRounds) {
         endGame();
         return;
@@ -113,18 +179,24 @@ function startRound(round) {
     }, 1000);
 }
 
-// 게임 문장 가져오기
+// 게임 문장 가져오기 및 녹음 시작
 function fetchGameSentenceAndStartRecording() {
     fetch('/get_game_sentence')
         .then(response => response.json())
         .then(data => {
             if (data.error) {
                 console.error('Error:', data.error);
-                alert("게임 문장 가져오기 실패!");
+                alert("게임 문장 가져오기 실패!\n오류 메시지: " + data.error);
+                // 점수 0 처리 후 다음 라운드
+                handleTranscriptionFail();
                 return;
             }
             const gameSentence = data.game_sentence;
-            // 문장 표시
+            if (!gameSentence) {
+                alert("게임 문장이 비어있습니다.");
+                handleTranscriptionFail();
+                return;
+            }
             gameText.innerText = gameSentence;
             gameText.classList.remove('hidden'); // 문장 표시
             gameStatus.innerText = "녹음 중...";
@@ -132,12 +204,12 @@ function fetchGameSentenceAndStartRecording() {
         })
         .catch(error => {
             console.error('Error fetching game sentence:', error);
-            alert("게임 문장 가져오기 실패!");
-            gameStatus.innerText = "오류 발생!";
+            alert("게임 문장 가져오기 실패!\n오류 메시지: " + error);
+            handleTranscriptionFail();
         });
 }
 
-// 녹음 시작
+// 녹음 시작 함수
 function startRecording(referenceSentence) {
     audioChunks = [];
     navigator.mediaDevices.getUserMedia({ audio: true })
@@ -167,12 +239,12 @@ function startRecording(referenceSentence) {
         })
         .catch(error => {
             console.error('Error accessing media devices.', error);
-            alert("마이크 접근에 실패했습니다.");
-            gameStatus.innerText = "오류 발생!";
+            alert("녹음 실패!\n오류: " + error);
+            handleTranscriptionFail();
         });
 }
 
-// 녹음 중지
+// 녹음 중지 함수
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
@@ -184,9 +256,7 @@ function stopRecording() {
 function sendAudio(audioData, referenceSentence) {
     fetch('/process', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             audio: audioData,
             reference: referenceSentence
@@ -196,25 +266,42 @@ function sendAudio(audioData, referenceSentence) {
     .then(data => {
         if (data.error) {
             console.error('Error:', data.error);
-            gameStatus.innerText = "오류 발생!";
+            alert("STT 변환 실패!\n오류 메시지: " + data.error);
+            handleTranscriptionFail();
             return;
         }
         const { scores, difficulty } = data;
-        if (scores && typeof scores.Whisper === 'number') {
-            totalScore += scores.Whisper;
+        if (!scores || typeof scores.Whisper !== 'number') {
+            alert("STT 변환 실패: 점수 데이터가 유효하지 않습니다.");
+            handleTranscriptionFail();
+            return;
         }
-        console.log(`라운드 ${currentRound} 점수: ${scores.Whisper}%`);
+        const whisperScore = scores.Whisper;
+        console.log(`라운드 ${currentRound} 점수: ${whisperScore}%`);
+        totalScore += whisperScore;
         currentRound++;
-
-        // 2초 후 다음 라운드
         setTimeout(() => {
             startRound(currentRound);
         }, 2000);
     })
     .catch(error => {
         console.error('Error:', error);
-        gameStatus.innerText = "오류 발생!";
+        alert("STT 변환 실패!\n네트워크 또는 서버 오류.\n오류 메시지: " + error);
+        handleTranscriptionFail();
     });
+}
+
+// Transcription 실패 시 0점 처리 & 다음 라운드
+function handleTranscriptionFail() {
+    console.warn("Transcription failed, 0점 처리 후 다음 라운드 이동");
+    currentRound++;
+    setTimeout(() => {
+        if (currentRound > totalRounds) {
+            endGame();
+        } else {
+            startRound(currentRound);
+        }
+    }, 2000);
 }
 
 // 게임 종료
@@ -237,9 +324,7 @@ scoreForm.addEventListener('submit', (e) => {
     whisperScoreDisplay.innerText = totalScore.toFixed(2);
 });
 
-// 난이도 계산
 function calculateDifficulty() {
-    // 전체 라운드 평균 점수로 난이도 계산 (예시)
     const averageScore = totalScore / totalRounds;
     if (averageScore > 90) {
         return "초급";
@@ -250,7 +335,7 @@ function calculateDifficulty() {
     }
 }
 
-// "다시하기" 로직
+// 다시하기 로직
 function resetGame() {
     currentRound = 1;
     totalScore = 0;
@@ -261,15 +346,14 @@ function resetGame() {
     difficultyDisplay.innerText = '';
     whisperScoreDisplay.innerText = '';
     document.getElementById('total-score').innerText = '0';
-    // 입력 폼 초기화
     document.getElementById('company').value = '';
     document.getElementById('employee-id').value = '';
     document.getElementById('name').value = '';
+    micStatus.innerText = '';
+    micTestPassed = false;
 }
 
-// 결과 페이지의 "다시하기" 버튼
-document.getElementById('retry-btn-results').addEventListener('click', () => {
+retryBtnResults.addEventListener('click', () => {
     resetGame();
     showPage(landingPage);
 });
-
