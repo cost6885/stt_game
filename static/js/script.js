@@ -96,16 +96,24 @@ function sendAudioForTest(audioData, referenceSentence) {
     .then(data => {
         if (data.error) {
             console.error('Error:', data.error);
-            micStatus.innerText = "마이크 테스트 실패! [오류 발생: " + data.error + "]";
-            alert("마이크 테스트 실패 (오류). 다시 시도해주세요.\n오류 메시지: " + data.error);
+            micStatus.innerText = "마이크 테스트 실패!";
+            alert("마이크 테스트 실패!);
             micTestPassed = false;
+            // 로직 테스트 용으로 삭제예정
+            micTestPassed = false;            
+            showPage(gameStartPage);
+            startGameSequence();            
             return;
         }
         const { scores, difficulty } = data;
         if (!scores || typeof scores.Whisper !== 'number') {
-            micStatus.innerText = "마이크 테스트 실패! [결과 데이터 이상]";
+            micStatus.innerText = "마이크 테스트 실패!";
             alert("마이크 테스트 결과가 올바르지 않습니다. 다시 시도해주세요.");
             micTestPassed = false;
+            // 로직 테스트 용으로 삭제예정
+            micTestPassed = false;            
+            showPage(gameStartPage);
+            startGameSequence();        
             return;
         }
         // 정확 발화 체크 (점수 기준 90% 이상 등)
@@ -117,8 +125,8 @@ function sendAudioForTest(audioData, referenceSentence) {
             showPage(gameStartPage);
             startGameSequence();
         } else {
-            micStatus.innerText = "마이크 테스트 실패! [문구 불일치]";
-            alert("문구를 정확히 말하지 못했습니다.\n점수: " + scores.Whisper.toFixed(2) + "%\n다시 시도하세요.");
+            micStatus.innerText = "마이크 테스트 실패!";
+            alert("문구를 정확히 말하지 못했습니다. + "%\n다시 시도하세요.");
             micTestPassed = false;
         }
     })
