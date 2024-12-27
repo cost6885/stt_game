@@ -174,25 +174,22 @@
             cursor: pointer;
         }
 
-
         /* 게임 시작 페이지를 화면 전면에 */
         #game-start-page {
-            position: fixed;            /* 화면을 고정해서 페이지 전체 덮기 */
+            position: fixed;      /* 화면 전면에 고정 */
             top: 0;
             left: 0;
-            width: 100vw;              /* 뷰포트 전체 폭 */
-            height: 100vh;             /* 뷰포트 전체 높이 */
-            z-index: 9999;             /* 다른 요소들보다 최상단 */
-            background-color: rgba(0, 0, 0, 0.8); /* 어두운 반투명 배경 */
-            display: none;             /* 기본은 숨김, JS에서 필요한 시점에 display 변경 */
-            justify-content: center;   /* 내부 콘텐츠 수평 중앙 정렬 */
-            align-items: center;       /* 내부 콘텐츠 수직 중앙 정렬 */
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background-color: rgba(0, 0, 0, 0.8); 
+            display: none;       /* JS에서 'flex'로 변경 */
+            justify-content: center; 
+            align-items: center;
         }
-        
-        /* 게임 시작 이미지 */
         #game-start-image {
-            width: 400px;       /* 원하는 크기로 조절 */
-            height: auto;       /* 비율 유지 */
+            width: 400px; 
+            height: auto; 
         }
     </style>
 </head>
@@ -217,11 +214,6 @@
             <p id="mic-status"></p>
         </div>
 
-        <!-- Game Start Page -->
-        <div id="game-start-page" class="page">
-            <img src="{{ url_for('static', filename='images/game_start.png') }}" alt="게임 시작" id="game-start-image">
-        </div>
-
         <!-- Round Page -->
         <div id="round-page" class="page">
             <h2 id="round-title">라운드 1</h2>
@@ -241,6 +233,11 @@
             <p class="score-feedback" id="score-feedback-text"></p>
             <button id="next-round-btn">다음 라운드</button>
         </div>
+    </div>
+
+    <!-- game-start-page: container 밖에 위치 -->
+    <div id="game-start-page" class="page">
+        <img src="{{ url_for('static', filename='images/game_start.png') }}" alt="게임 시작" id="game-start-image">
     </div>
 
     <!-- formContainer: 최종 점수 제출을 위한 폼 -->
