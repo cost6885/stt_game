@@ -1,4 +1,3 @@
-// static/js/script.js
 
 let mediaRecorder;
 let audioChunks = [];
