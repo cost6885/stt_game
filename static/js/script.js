@@ -17,11 +17,10 @@ const micTestPage = document.getElementById('mic-test-page');
 const gameStartPage = document.getElementById('game-start-page');
 const roundPage = document.getElementById('round-page');
 const roundFeedbackPage = document.getElementById('round-feedback-page');
-const scorePage = document.getElementById('score-page');
-// resultsPage는 제거했으므로 없음
 
-// 새로 추가한 폼 컨테이너
+// 폼 컨테이너 (score-page 대신)
 const formContainer = document.getElementById('formContainer');
+const finalScoreDisplay = document.getElementById('final-score');
 
 // 버튼 / 요소
 const startGameBtn = document.getElementById('start-game-btn');
@@ -32,7 +31,6 @@ const roundTitle = document.getElementById('round-title');
 const countdownDisplay = document.getElementById('countdown');
 const gameText = document.getElementById('game-text');
 const gameStatus = document.getElementById('game-status');
-const totalScoreDisplay = document.getElementById('total-score');
 
 // 라운드 피드백
 const recordedAudioEl = document.getElementById('recorded-audio');
@@ -40,9 +38,6 @@ const originalTextEl = document.getElementById('original-text');
 const recognizedTextEl = document.getElementById('recognized-text');
 const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
 const nextRoundBtn = document.getElementById('next-round-btn');
-
-// Score Page 폼
-const scoreForm = document.getElementById('score-form');
 
 /** 페이지 전환 */
 function showPage(page) {
@@ -72,8 +67,8 @@ testMicBtn.addEventListener('click', async () => {
         micStatus.innerText = "마이크 연결 성공! 문장을 말해보세요...";
         startMicTest(stream);
     } catch (error) {
-        console.error('Error accessing media devices:', error);
-        alert("마이크 접근에 실패했습니다. 브라우저에서 마이크 권한을 허용했는지 확인해주세요.");
+        console.error('마이크 접근 실패:', error);
+        micStatus.innerText = "마이크 접근 실패. 브라우저 권한 확인 요망.";
     }
 });
 
@@ -88,7 +83,7 @@ function startMicTest(stream) {
     };
 
     mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { 'type': 'audio/wav; codecs=PCM' });
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav; codecs=PCM' });
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
         reader.onloadend = () => {
@@ -115,11 +110,9 @@ function sendAudioForTest(audioData, referenceSentence) {
     .then(response => response.json())
     .then(data => {
         if (data.error) {
-            console.error('Error:', data.error);
-            micStatus.innerText = "마이크 테스트 실패!";
-            alert("마이크 테스트 실패!\n오류 메시지: " + data.error);
-            micTestPassed = false;
-            // 테스트 편의를 위해 우회처리
+            console.error('마이크 테스트 실패:', data.error);
+            micStatus.innerText = "마이크 테스트 실패: " + data.error;
+            // 편의를 위해 우회
             micTestPassed = true;
             showPage(gameStartPage);
             startGameSequence();
@@ -128,28 +121,24 @@ function sendAudioForTest(audioData, referenceSentence) {
 
         const { scores } = data;
         if (!scores || typeof scores.Whisper !== 'number') {
-            micStatus.innerText = "마이크 테스트 실패!";
-            alert("마이크 테스트 결과가 올바르지 않습니다. 다시 시도해주세요.");
+            micStatus.innerText = "마이크 테스트 실패. 결과 데이터 이상.";
             micTestPassed = false;
             return;
         }
 
         if (scores.Whisper > 90) {
-            micStatus.innerText = "마이크 테스트 성공!";
-            alert(`마이크 테스트에 성공!\n(점수: ${scores.Whisper.toFixed(2)}%)`);
+            micStatus.innerText = "마이크 테스트 성공.";
             micTestPassed = true;
             showPage(gameStartPage);
             startGameSequence();
         } else {
-            micStatus.innerText = "마이크 테스트 실패!";
-            alert(`문구를 정확히 말하지 못했습니다.\n점수: ${scores.Whisper.toFixed(2)}%\n다시 시도하세요.`);
+            micStatus.innerText = `정확 발화 실패. 점수: ${scores.Whisper.toFixed(2)}`;
             micTestPassed = false;
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        micStatus.innerText = "마이크 테스트 실패! [네트워크/서버 오류]";
-        alert(`마이크 테스트에 실패했습니다.\n오류: ${error}`);
+        console.error('마이크 테스트 중 오류:', error);
+        micStatus.innerText = "마이크 테스트 실패 (네트워크/서버 오류)";
         micTestPassed = false;
     });
 }
@@ -157,7 +146,7 @@ function sendAudioForTest(audioData, referenceSentence) {
 /** 게임 시작 시퀀스 */
 function startGameSequence() {
     if (!micTestPassed) {
-        alert("마이크 테스트를 통과해야 게임을 시작할 수 있습니다.");
+        micStatus.innerText = "마이크 테스트를 통과해야 게임 시작 가능.";
         showPage(micTestPage);
         return;
     }
@@ -173,7 +162,7 @@ function startGameSequence() {
 /** 라운드 시작 */
 function startRound(round) {
     if (!micTestPassed) {
-        alert("마이크 테스트를 통과해야 게임을 진행할 수 있습니다.");
+        micStatus.innerText = "마이크 테스트 통과 후 라운드 진행 가능.";
         showPage(micTestPage);
         return;
     }
@@ -206,14 +195,13 @@ function fetchGameSentenceAndStartRecording() {
         .then(response => response.json())
         .then(data => {
             if (data.error) {
-                console.error('Error:', data.error);
-                alert("게임 문장 가져오기 실패!\n오류 메시지: " + data.error);
+                console.error('게임 문장 가져오기 실패:', data.error);
                 handleTranscriptionFail();
                 return;
             }
             const gameSentence = data.game_sentence;
             if (!gameSentence) {
-                alert("게임 문장이 비어있습니다.");
+                console.warn('게임 문장이 비어 있음');
                 handleTranscriptionFail();
                 return;
             }
@@ -223,8 +211,7 @@ function fetchGameSentenceAndStartRecording() {
             startRecording(gameSentence);
         })
         .catch(error => {
-            console.error('Error fetching game sentence:', error);
-            alert(`게임 문장 가져오기 실패!\n오류 메시지: ${error}`);
+            console.error('게임 문장 가져오기 오류:', error);
             handleTranscriptionFail();
         });
 }
@@ -241,7 +228,7 @@ function startRecording(referenceSentence) {
             };
 
             mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { 'type': 'audio/wav; codecs=PCM' });
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav; codecs=PCM' });
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = () => {
@@ -257,8 +244,7 @@ function startRecording(referenceSentence) {
             }, 10000);
         })
         .catch(error => {
-            console.error('Error accessing media devices.', error);
-            alert(`녹음 실패!\n오류: ${error}`);
+            console.error('녹음 접근 오류:', error);
             handleTranscriptionFail();
         });
 }
@@ -283,14 +269,13 @@ function sendAudio(audioData, referenceSentence) {
     .then(response => response.json())
     .then(data => {
         if (data.error) {
-            console.error('Error:', data.error);
-            alert(`STT 변환 실패!\n오류 메시지: ${data.error}`);
+            console.error('STT 변환 실패:', data.error);
             handleTranscriptionFail();
             return;
         }
         const { scores, difficulty, stt_text, audio_path } = data;
         if (!scores || typeof scores.Whisper !== 'number' || !stt_text) {
-            alert("STT 변환 실패: 데이터가 유효하지 않습니다.");
+            console.warn('STT 결과 데이터 이상 or 없음');
             handleTranscriptionFail();
             return;
         }
@@ -302,15 +287,14 @@ function sendAudio(audioData, referenceSentence) {
         showRoundFeedback(referenceSentence, stt_text, whisperScore, audio_path);
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert(`STT 변환 실패!\n네트워크 또는 서버 오류.\n오류 메시지: ${error}`);
+        console.error('STT 변환 중 오류:', error);
         handleTranscriptionFail();
     });
 }
 
 /** 라운드 피드백 표시 */
 function showRoundFeedback(reference, recognized, score, audioPath) {
-    showPage(document.getElementById('round-feedback-page'));
+    showPage(roundFeedbackPage);
     // 오디오 재생
     recordedAudioEl.src = audioPath; 
     // 원문 vs 인식문 비교
@@ -354,25 +338,12 @@ function handleTranscriptionFail() {
     }, 1000);
 }
 
-/** 게임 종료 → Score Page */
+/** 게임 종료 → formContainer로 이동하여 최종 점수 제출 */
 function endGame() {
-    showPage(scorePage);
-    totalScoreDisplay.innerText = totalScore.toFixed(2);
+    // 폼 컨테이너 표시 + 최종 점수 보여주기
+    document.getElementById('final-score').innerText = totalScore.toFixed(2);
+    showFormContainer();
 }
-
-/** 점수 폼 제출 */
-scoreForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const company = document.getElementById('company').value;
-    const employeeId = document.getElementById('employee-id').value;
-    const name = document.getElementById('name').value;
-
-    alert(`회사명: ${company}\n사번: ${employeeId}\n이름: ${name}\n총 점수: ${totalScore.toFixed(2)}%`);
-
-    // 여기서 굳이 다른 페이지로 이동하지 않고, 
-    // 원한다면 showFormContainer()를 호출하거나, 
-    // 곧바로 응모하기로 이어질 수도 있음
-});
 
 /** Differences 하이라이팅 */
 function highlightDifferences(original, recognized) {
@@ -392,30 +363,21 @@ function highlightDifferences(original, recognized) {
     return resultHtml;
 }
 
-/** 폼 띄우는 예시 함수 */
-function showFormContainer() {
-    formContainer.style.display = 'block';
-}
-/** 폼 숨기기 */
-function hideFormContainer() {
-    formContainer.style.display = 'none';
-}
-
-/** sendToGoogleSheets */
+/** sendToGoogleSheets (alert 제거) */
 function sendToGoogleSheets() {
-    let company2 = document.getElementById('company2').value.trim();
-    let employeeId2 = document.getElementById('employeeId').value.trim();
-    let name2 = document.getElementById('name2').value.trim();
+    let company = document.getElementById('company').value.trim();
+    let employeeId = document.getElementById('employeeId').value.trim();
+    let name = document.getElementById('name').value.trim();
 
-    if (!company2 || !employeeId2 || !name2) {
-        alert("모든 정보를 입력해주세요!");
+    if (!company || !employeeId || !name) {
+        console.warn("모든 정보를 입력해주세요!");
         return;
     }
 
     let data = {
-        company2,
-        employeeId2,
-        name2,
+        company,
+        employeeId,
+        name,
         totalScore: totalScore.toFixed(2),
         time: new Date().toLocaleString()
     };
@@ -434,16 +396,14 @@ function sendToGoogleSheets() {
     })
     .then(res => {
         console.log("응모 완료:", res);
-        alert("응모가 완료되었습니다!");
         hideFormContainer();
     })
     .catch(error => {
         console.error("응모 실패:", error);
-        alert("응모 중 오류가 발생했습니다.\n" + error);
     });
 }
 
-/** "다시하기"와 유사한 로직 */
+/** "다시하기" */
 function prapare() {
     hideFormContainer();
     resetGame();  
@@ -458,15 +418,13 @@ function resetGame() {
     gameText.innerText = '';
     gameText.classList.add('hidden');
     gameStatus.innerText = '';
-    document.getElementById('total-score').innerText = '0';
-    document.getElementById('company').value = '';
-    document.getElementById('employee-id').value = '';
-    document.getElementById('name').value = '';
     micStatus.innerText = '';
     micTestPassed = false;
 
-    // 폼 컨테이너 초기화
-    document.getElementById('company2').value = '';
+    document.getElementById('final-score').innerText = '0';
+    document.getElementById('company').value = '';
     document.getElementById('employeeId').value = '';
-    document.getElementById('name2').value = '';
+    document.getElementById('name').value = '';
+
+    // etc. 초기화
 }
