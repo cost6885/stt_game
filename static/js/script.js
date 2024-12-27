@@ -8,6 +8,9 @@ const totalRounds = 3;
 let countdownInterval;
 let micTestPassed = false;
 
+/** 이미 사용한 문장 리스트 */
+let usedSentences = []; 
+
 // 기존 필드 or 문구
 const requiredTestSentence = typeof testSentence !== 'undefined' ? testSentence : "인생을 맛있게";
 
@@ -44,7 +47,7 @@ const recognizedTextEl = document.getElementById('recognized-text');
 const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
 const nextRoundBtn = document.getElementById('next-round-btn');
 
-/** 페이지 전환: 라운드, 피드백 전용 */
+/** 페이지 전환 */
 function showPage(page) {
     [landingPage, micTestPage, roundPage, roundFeedbackPage].forEach(p => p.classList.remove('active'));
     page.classList.add('active');
@@ -116,7 +119,7 @@ function sendAudioForTest(audioData, referenceSentence) {
             console.error('마이크 테스트 실패:', data.error);
             micStatus.innerText = "마이크 테스트 실패: " + data.error;
 
-            // (테스트 편의를 위해) 자동 우회
+            // (테스트 편의상) 자동 우회
             micTestPassed = true;
             startGameSequence();
             return;
@@ -151,12 +154,12 @@ function startGameSequence() {
         micStatus.innerText = "마이크 테스트를 통과해야 게임 시작 가능.";
         return;
     }
-    // 게임 시작 페이지 (전면) 2초 표시
     gameStartPage.style.display = 'flex';
     setTimeout(() => {
         gameStartPage.style.display = 'none';
         currentRound = 1;
         totalScore = 0;
+        usedSentences = []; // 새로운 게임 시 usedSentences 초기화
         showPage(roundPage);
         startRound(currentRound);
     }, 2000);
@@ -184,6 +187,7 @@ function startRound(round) {
         if (countdown <= 0) {
             clearInterval(countdownInterval);
             countdownDisplay.innerText = '';
+            // 중복 없는 문장 요청 시도
             fetchGameSentenceAndStartRecording();
         } else {
             countdownDisplay.innerText = countdown;
@@ -191,31 +195,57 @@ function startRound(round) {
     }, 1000);
 }
 
-/** 게임 문장 + 녹음 */
+/** 게임 문장 + 녹음: 중복되지 않는 문장 요청 */
 function fetchGameSentenceAndStartRecording() {
-    fetch('/get_game_sentence')
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                console.warn('게임 문장 실패:', data.error);
-                handleTranscriptionFail(); // 0점 처리
-                return;
-            }
-            const gameSentence = data.game_sentence;
-            if (!gameSentence) {
-                console.warn('게임 문장이 비어있음');
-                handleTranscriptionFail(); // 0점 처리
-                return;
-            }
-            gameText.innerText = gameSentence;
-            gameText.classList.remove('hidden');
-            gameStatus.innerText = "녹음 중...";
-            startRecording(gameSentence);
-        })
-        .catch(error => {
-            console.error('게임 문장 오류:', error);
-            handleTranscriptionFail(); // 0점 처리
-        });
+    let attempts = 0;
+
+    function fetchDistinctSentence() {
+        attempts++;
+        if (attempts > 5) {
+            console.warn("중복 제거 실패, 5회 시도 후 중복 문장이라도 진행합니다.");
+            // 그냥 proceed with last sentence
+            proceedRecording("어쩔 수 없이 중복 문장", true);
+            return;
+        }
+        fetch('/get_game_sentence')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.warn('게임 문장 실패:', data.error);
+                    handleTranscriptionFail();
+                    return;
+                }
+                const gameSentence = data.game_sentence;
+                if (!gameSentence) {
+                    console.warn('게임 문장이 비어있음');
+                    handleTranscriptionFail();
+                    return;
+                }
+                // 중복 검사
+                if (usedSentences.includes(gameSentence)) {
+                    console.log("중복 문장 감지, 재시도...");
+                    fetchDistinctSentence(); // 재시도
+                } else {
+                    // 중복 아님
+                    usedSentences.push(gameSentence);
+                    proceedRecording(gameSentence, false);
+                }
+            })
+            .catch(error => {
+                console.error('게임 문장 오류:', error);
+                handleTranscriptionFail();
+            });
+    }
+
+    function proceedRecording(gameSentence, forced) {
+        // forced=true이면 중복 문장 강행
+        gameText.innerText = gameSentence;
+        gameText.classList.remove('hidden');
+        gameStatus.innerText = "녹음 중...";
+        startRecording(gameSentence);
+    }
+
+    fetchDistinctSentence();
 }
 
 function startRecording(referenceSentence) {
@@ -300,7 +330,6 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
     roundPage.classList.remove('active');
     roundFeedbackPage.classList.add('active');
 
-    // 오디오
     recordedAudioEl.src = audioPath || "";
     originalTextEl.innerHTML = reference;
     recognizedTextEl.innerHTML = highlightDifferences(reference, recognized);
@@ -320,7 +349,6 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
 
 /** "다음 라운드" 버튼 */
 nextRoundBtn.addEventListener('click', () => {
-    // 피드백 페이지 숨기고 다음 라운드
     roundFeedbackPage.classList.remove('active');
     currentRound++;
     if (currentRound > totalRounds) {
@@ -331,16 +359,12 @@ nextRoundBtn.addEventListener('click', () => {
     }
 });
 
-/** 오류 발생 시 0점 처리 & 피드백 페이지 표시 → 수동으로 "다음 라운드" 누르게 */
+/** 오류 발생 시 0점 처리 & 피드백 페이지 표시 → 사용자가 "다음 라운드" 클릭 */
 function handleTranscriptionFail() {
-    console.warn("Transcription failed or no speech. 0점 처리.");
-    // 현 라운드를 0점 처리
-    const whisperScore = 0;
-    // 토탈 점수 += 0
-    // totalScore = totalScore + 0 -> 그대로
-    // BAD 피드백
-    showRoundFeedback("", "", whisperScore, "");
-    // **주의**: 여기서 currentRound++ 하지 않음
+    console.warn("Transcription failed or no speech -> 0점 처리.");
+    // 현 라운드 0점
+    // totalScore += 0
+    showRoundFeedback("", "", 0, "");
 }
 
 /** 게임 종료 → formContainer로 이동하여 최종 점수 제출 */
@@ -418,6 +442,7 @@ function prapare() {
 function resetGame() {
     currentRound = 1;
     totalScore = 0;
+    usedSentences = []; // 다시 초기화
     countdownDisplay.innerText = '';
     gameText.innerText = '';
     gameText.classList.add('hidden');
