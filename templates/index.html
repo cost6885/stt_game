@@ -174,6 +174,26 @@
             cursor: pointer;
         }
 
+
+        /* 게임 시작 페이지를 화면 전면에 */
+        #game-start-page {
+            position: fixed;            /* 화면을 고정해서 페이지 전체 덮기 */
+            top: 0;
+            left: 0;
+            width: 100vw;              /* 뷰포트 전체 폭 */
+            height: 100vh;             /* 뷰포트 전체 높이 */
+            z-index: 9999;             /* 다른 요소들보다 최상단 */
+            background-color: rgba(0, 0, 0, 0.8); /* 어두운 반투명 배경 */
+            display: none;             /* 기본은 숨김, JS에서 필요한 시점에 display 변경 */
+            justify-content: center;   /* 내부 콘텐츠 수평 중앙 정렬 */
+            align-items: center;       /* 내부 콘텐츠 수직 중앙 정렬 */
+        }
+        
+        /* 게임 시작 이미지 */
+        #game-start-image {
+            width: 400px;       /* 원하는 크기로 조절 */
+            height: auto;       /* 비율 유지 */
+        }
     </style>
 </head>
 <body>
