@@ -50,6 +50,18 @@ const recognizedTextEl = document.getElementById('recognized-text');
 const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
 const nextRoundBtn = document.getElementById('next-round-btn');
 
+/** 
+ * 버튼 레이블 업데이트 함수 
+ * 라운드가 마지막(3라운드)이면 "결과보기", 그 외는 "다음 라운드"
+ */
+function updateNextRoundButtonLabel() {
+    if (currentRound === totalRounds) {
+        nextRoundBtn.textContent = "결과보기";
+    } else {
+        nextRoundBtn.textContent = "다음 라운드";
+    }
+}
+
 /** 페이지 전환 */
 function showPage(page) {
     [landingPage, micTestPage, roundPage, roundFeedbackPage].forEach(p => p.classList.remove('active'));
@@ -178,8 +190,13 @@ function startRound(round) {
         endGame();
         return;
     }
+    // 라운드 페이지 표시
     showPage(roundPage);
+    // 라운드 제목
     roundTitle.innerText = `라운드 ${round}`;
+    // 버튼 라벨 업데이트 ("다음 라운드" or "결과보기")
+    updateNextRoundButtonLabel();
+
     gameStatus.innerText = '';
     gameText.classList.add('hidden');
 
@@ -239,7 +256,7 @@ function fetchGameSentenceAndStartRecording() {
     }
 
     function proceedRecording(gameSentence, forced) {
-        lastReference = gameSentence; // <<--- 저장해서 오류 시에도 표시
+        lastReference = gameSentence; 
         gameText.innerText = gameSentence;
         gameText.classList.remove('hidden');
         gameStatus.innerText = "녹음 중...";
@@ -331,13 +348,12 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
     roundPage.classList.remove('active');
     roundFeedbackPage.classList.add('active');
 
-    // 음성 파일 로드된 후 or 라운드 피드백 표시 시점에...
+    // 자동재생 시도 (브라우저 정책에 따라 차단 가능)
     recordedAudioEl.src = audioPath || "";    
-    recordedAudioEl.autoplay = true;  // JS로 autoplay 설정
+    recordedAudioEl.autoplay = true;
     recordedAudioEl.load();
-    // 재생 시도 (브라우저 정책에 따라 차단될 수 있음)
     recordedAudioEl.play().catch(err => {
-      console.warn("자동 재생이 차단되었습니다:", err);
+        console.warn("자동 재생이 차단되었습니다:", err);
     });
     
     originalTextEl.innerHTML = reference;
@@ -356,7 +372,7 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
     scoreFeedbackTextEl.textContent = `${feedbackText} ( ${score.toFixed(2)}% )`;
 }
 
-/** "다음 라운드" 버튼 */
+/** "다음 라운드" or "결과보기" 버튼 */
 nextRoundBtn.addEventListener('click', () => {
     roundFeedbackPage.classList.remove('active');
     currentRound++;
@@ -372,8 +388,6 @@ nextRoundBtn.addEventListener('click', () => {
 function handleTranscriptionFail() {
     console.warn("Transcription failed or no speech -> 0점 처리.");
     const whisperScore = 0;
-    // totalScore += 0
-    // '원문' -> lastReference / '인식' -> "" / score=0
     showRoundFeedback(lastReference, "", whisperScore, "");
 }
 
@@ -452,7 +466,7 @@ function prapare() {
 function resetGame() {
     currentRound = 1;
     totalScore = 0;
-    usedSentences = []; // 다시 초기화
+    usedSentences = []; 
     countdownDisplay.innerText = '';
     gameText.innerText = '';
     gameText.classList.add('hidden');
