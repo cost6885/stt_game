@@ -415,50 +415,48 @@ function highlightDifferences(original, recognized) {
     return resultHtml;
 }
 
-/** sendToGoogleSheets - Google Apps Script에 데이터 전송 */
 function sendToGoogleSheets() {
-    let company = document.getElementById('company').value.trim();
-    let employeeId = document.getElementById('employeeId').value.trim();
-    let name = document.getElementById('name').value.trim();
+  let company = document.getElementById('company').value.trim();
+  let employeeId = document.getElementById('employeeId').value.trim();
+  let name = document.getElementById('name').value.trim();
 
-    if (!company || !employeeId || !name) {
-        console.warn("모든 정보를 입력해주세요!");
-        return;
-    }
+  if (!company || !employeeId || !name) {
+      console.warn("모든 정보를 입력해주세요!");
+      return;
+  }
 
-    let data = {
-        company,
-        employeeId,
-        name,
-        totalScore: totalScore.toFixed(2),
-        time: new Date().toLocaleString() // JS 측에서 현재 시각을 함께 전송
-    };
+  let data = {
+      company,
+      employeeId,
+      name,
+      totalScore: totalScore.toFixed(2),
+      time: new Date().toLocaleString()
+  };
 
-    // Google Apps Script 웹 앱 URL (deploy 후 생성된 URL로 교체)
-    const scriptURL = 'https://script.google.com/macros/s/AKfycbw1Ym6zt4neYv10vZchEwguPYWk0s87V38bCm15t13OJI6zNrieqVcPi2gvPtGP0gHpvg/exec';
+  // EC2 Node 서버 주소, /google 라우트
+  // ip주소는 계속 변환예정
+  const YOUR_EC2_IP = "3.135.213.141";
+  const nodeServerURL = `http://${YOUR_EC2_IP}:3000/google`;
 
-    fetch(scriptURL, {
-        method: 'POST',               // POST 요청
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),   // JSON 형태로 전송
-        mode: 'cors'
-    })
-    .then(response => response.json())
-    .then(res => {
-        console.log("서버 응답:", res);
-        if (res.status === "success") {
-            // 성공 처리
-            // 예: 폼 숨기기
-            hideFormContainer(); 
-        } else {
-            // 오류 처리
-            console.warn("서버에서 오류 반환:", res.message);
-        }
-    })
-    .catch(error => {
-        console.error("fetch 오류:", error);
-    });
+  fetch(nodeServerURL, {
+      method: 'POST',
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+  })
+  .then(response => response.json())
+  .then(res => {
+      console.log("Node server 응답:", res);
+      if (res.status === "success") {
+          hideFormContainer(); 
+      } else {
+          console.warn("서버에서 오류 반환:", res.message);
+      }
+  })
+  .catch(error => {
+      console.error("Node fetch 오류:", error);
+  });
 }
+
 
 
 /** "다시하기" */
