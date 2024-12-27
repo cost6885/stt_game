@@ -1,27 +1,11 @@
 // static/js/script.js
 
-document.addEventListener("DOMContentLoaded", function() {
-    let currentPageIndex = 0;  // 현재 활성화된 페이지 인덱스
-    const pages = document.querySelectorAll('.page'); // 모든 페이지 요소 선택
-    
-    // 첫 번째 페이지를 표시
-    pages[currentPageIndex].classList.add('active');
-
-    // 버튼 클릭 시 페이지 전환 (예시)
-    document.querySelector('#next-button').addEventListener('click', function() {
-        pages[currentPageIndex].classList.remove('active'); // 현재 페이지 숨기기
-        currentPageIndex = (currentPageIndex + 1) % pages.length; // 다음 페이지로 이동
-        pages[currentPageIndex].classList.add('active'); // 새로운 페이지 보이기
-    });
-});
-
 let mediaRecorder;
 let audioChunks = [];
 let currentRound = 1;
 let totalScore = 0;
 const totalRounds = 3;
 let countdownInterval;
-let gameSentence = "";
 
 // 페이지 요소
 const landingPage = document.getElementById('landing-page');
@@ -44,21 +28,23 @@ const difficultyDisplay = document.getElementById('difficulty');
 const whisperScoreDisplay = document.getElementById('whisper-score');
 
 const scoreForm = document.getElementById('score-form');
-const retryBtn = document.getElementById('retry-btn');
 const retryBtnResults = document.getElementById('retry-btn-results');
 
-// 페이지 초기화 함수: 하나의 페이지만 활성화
+// 마이크 테스트 문구 (index.html에서 전달)
+const testSentence = typeof testSentence !== 'undefined' ? testSentence : "인생을 맛있게";
+
+// 초기화 함수: 하나의 페이지만 active
 function showPage(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     page.classList.add('active');
 }
 
-// 게임 준비 버튼 클릭 시
+// 게임 준비 버튼
 startGameBtn.addEventListener('click', () => {
     showPage(micTestPage);
 });
 
-// 마이크 테스트 버튼 클릭 시
+// 마이크 테스트 버튼
 testMicBtn.addEventListener('click', async () => {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -70,86 +56,84 @@ testMicBtn.addEventListener('click', async () => {
     }
 });
 
-// 마이크 테스트 함수
+// 마이크 테스트 (3초)
 function startMicTest(stream) {
-    audioChunks = [];
+    micStatus.innerText = "마이크 테스트 중...";
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.start();
-
-    micStatus.innerText = "마이크 테스트 중...";
 
     mediaRecorder.ondataavailable = event => {
         audioChunks.push(event.data);
     };
 
     mediaRecorder.onstop = () => {
-        // 만약 audioChunks에 데이터가 없으면 마이크 테스트 완료하지 않음
-        if (audioChunks.length === 0) {
-            micStatus.innerText = "입력이 감지되지 않았습니다. 다시 시도해주세요.";
-        } else {
-            micStatus.innerText = "마이크 테스트 완료!";
-            showPage(gameStartPage);
-            startGameSequence();
-        }
+        audioChunks = [];
+        micStatus.innerText = "마이크 테스트 완료!";
+        showPage(gameStartPage);
+        startGameSequence();
     };
 
-    // 마이크 테스트 녹음 3초 후 자동 중지
+    // 3초 후 마이크 테스트 종료
     setTimeout(() => {
-        mediaRecorder.stop();
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
     }, 3000);
 }
 
-// 게임 시작 시퀀스
+// 게임 시작
 function startGameSequence() {
-    // 게임 시작 이미지 표시
     gameStartImage.style.display = 'block';
 
-    // 2초 후 이미지 숨기기 및 첫 라운드 시작
+    // 2초 후 다음 단계
     setTimeout(() => {
         gameStartImage.style.display = 'none';
         startRound(currentRound);
     }, 2000);
 }
 
-// 라운드 시작 함수
+// 라운드 시작
 function startRound(round) {
     if (round > totalRounds) {
         endGame();
         return;
     }
-
     showPage(roundPage);
     roundTitle.innerText = `라운드 ${round}`;
     gameStatus.innerText = '';
+    gameText.classList.add('hidden'); // 문장 초기 숨김 처리
 
-    // 카운트다운 시작 (5초)
+    // 5초 카운트다운
     let countdown = 5;
     countdownDisplay.innerText = countdown;
     countdownInterval = setInterval(() => {
         countdown--;
-        if (countdown > 0) {
-            countdownDisplay.innerText = countdown;
-        } else {
+        if (countdown <= 0) {
             clearInterval(countdownInterval);
             countdownDisplay.innerText = '';
             fetchGameSentenceAndStartRecording();
+        } else {
+            countdownDisplay.innerText = countdown;
         }
     }, 1000);
 }
 
-// 게임 문장 가져오기 및 녹음 시작
+// 게임 문장 가져오기
 function fetchGameSentenceAndStartRecording() {
     fetch('/get_game_sentence')
         .then(response => response.json())
         .then(data => {
-            gameSentence = data.game_sentence;
-            if (!gameSentence) {
-                gameStatus.innerText = "게임 문장이 없습니다.";
+            if (data.error) {
+                console.error('Error:', data.error);
+                alert("게임 문장 가져오기 실패!");
                 return;
             }
+            const gameSentence = data.game_sentence;
+            // 문장 표시
             gameText.innerText = gameSentence;
+            gameText.classList.remove('hidden'); // 문장 표시
             gameStatus.innerText = "녹음 중...";
-            startRecording();
+            startRecording(gameSentence);
         })
         .catch(error => {
             console.error('Error fetching game sentence:', error);
@@ -158,16 +142,13 @@ function fetchGameSentenceAndStartRecording() {
         });
 }
 
-// 녹음 시작 함수
-function startRecording() {
+// 녹음 시작
+function startRecording(referenceSentence) {
     audioChunks = [];
-    let isRecording = false;
-
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.start();
-            isRecording = true;
 
             mediaRecorder.ondataavailable = event => {
                 audioChunks.push(event.data);
@@ -179,25 +160,15 @@ function startRecording() {
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = () => {
                     const base64data = reader.result;
-                    sendAudio(base64data, gameSentence);
+                    sendAudio(base64data, referenceSentence);
                 };
                 audioChunks = [];
             };
 
-            // 타이머 설정 (10초 동안 녹음이 없으면 자동으로 실패)
-            const timeout = setTimeout(() => {
-                if (!isRecording || audioChunks.length === 0) {
-                    gameStatus.innerText = "입력 없음! 다음 라운드로 넘어갑니다.";
-                    stopRecording();
-                    nextRound();
-                }
-            }, 10000); // 10초 후 자동으로 실패
-
-            // 10초 후 자동으로 녹음 중지
+            // 10초 후 녹음 종료
             setTimeout(() => {
                 stopRecording();
-                clearTimeout(timeout); // 타임아웃 해제
-            }, 10000); // 10초
+            }, 10000);
         })
         .catch(error => {
             console.error('Error accessing media devices.', error);
@@ -206,7 +177,7 @@ function startRecording() {
         });
 }
 
-// 녹음 중지 함수
+// 녹음 중지
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
@@ -214,52 +185,96 @@ function stopRecording() {
     }
 }
 
-// 오디오 데이터 서버로 전송
+// 서버로 오디오 전송
 function sendAudio(audioData, referenceSentence) {
     fetch('/process', {
         method: 'POST',
-        body: JSON.stringify({ audio_data: audioData, reference_sentence: referenceSentence }),
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            audio: audioData,
+            reference: referenceSentence
+        })
     })
     .then(response => response.json())
     .then(data => {
-        processResult(data);
+        if (data.error) {
+            console.error('Error:', data.error);
+            gameStatus.innerText = "오류 발생!";
+            return;
+        }
+        const { scores, difficulty } = data;
+        if (scores && typeof scores.Whisper === 'number') {
+            totalScore += scores.Whisper;
+        }
+        console.log(`라운드 ${currentRound} 점수: ${scores.Whisper}%`);
+        currentRound++;
+
+        // 2초 후 다음 라운드
+        setTimeout(() => {
+            startRound(currentRound);
+        }, 2000);
     })
     .catch(error => {
-        console.error('Error sending audio:', error);
+        console.error('Error:', error);
+        gameStatus.innerText = "오류 발생!";
     });
-}
-
-// 게임 결과 처리 함수
-function processResult(data) {
-    const score = data.score;
-    totalScore += score;
-    totalScoreDisplay.innerText = totalScore;
-    whisperScoreDisplay.innerText = score;
-    
-    nextRound();
-}
-
-// 라운드 종료 후 처리
-function nextRound() {
-    if (currentRound >= totalRounds) {
-        endGame();
-    } else {
-        currentRound++;
-        startRound(currentRound);
-    }
 }
 
 // 게임 종료
 function endGame() {
     showPage(scorePage);
-    totalScoreDisplay.innerText = totalScore;
-    difficultyDisplay.innerText = "쉬움"; // 난이도는 예시로 '쉬움'으로 설정
+    document.getElementById('total-score').innerText = totalScore.toFixed(2);
 }
 
-// 결과 페이지로 전환
-retryBtnResults.addEventListener('click', () => {
+// 점수 폼 제출
+scoreForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const company = document.getElementById('company').value;
+    const employeeId = document.getElementById('employee-id').value;
+    const name = document.getElementById('name').value;
+
+    alert(`회사명: ${company}\n사번: ${employeeId}\n이름: ${name}\n총 점수: ${totalScore.toFixed(2)}%`);
+
+    showPage(resultsPage);
+    difficultyDisplay.innerText = calculateDifficulty();
+    whisperScoreDisplay.innerText = totalScore.toFixed(2);
+});
+
+// 난이도 계산
+function calculateDifficulty() {
+    // 전체 라운드 평균 점수로 난이도 계산 (예시)
+    const averageScore = totalScore / totalRounds;
+    if (averageScore > 90) {
+        return "초급";
+    } else if (averageScore > 70) {
+        return "보통";
+    } else {
+        return "고급";
+    }
+}
+
+// "다시하기" 로직
+function resetGame() {
     currentRound = 1;
     totalScore = 0;
+    countdownDisplay.innerText = '';
+    gameText.innerText = '';
+    gameText.classList.add('hidden');
+    gameStatus.innerText = '';
+    difficultyDisplay.innerText = '';
+    whisperScoreDisplay.innerText = '';
+    document.getElementById('total-score').innerText = '0';
+    // 입력 폼 초기화
+    document.getElementById('company').value = '';
+    document.getElementById('employee-id').value = '';
+    document.getElementById('name').value = '';
+}
+
+// 결과 페이지의 "다시하기" 버튼
+document.getElementById('retry-btn-results').addEventListener('click', () => {
+    resetGame();
     showPage(landingPage);
 });
+
