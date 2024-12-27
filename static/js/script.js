@@ -415,7 +415,7 @@ function highlightDifferences(original, recognized) {
     return resultHtml;
 }
 
-/** sendToGoogleSheets */
+/** sendToGoogleSheets - Google Apps Script에 데이터 전송 */
 function sendToGoogleSheets() {
     let company = document.getElementById('company').value.trim();
     let employeeId = document.getElementById('employeeId').value.trim();
@@ -431,29 +431,35 @@ function sendToGoogleSheets() {
         employeeId,
         name,
         totalScore: totalScore.toFixed(2),
-        time: new Date().toLocaleString()
+        time: new Date().toLocaleString() // JS 측에서 현재 시각을 함께 전송
     };
 
-    fetch('https://script.google.com/macros/s/AKfycbXYZ/exec', {
-        method: 'POST',
+    // Google Apps Script 웹 앱 URL (deploy 후 생성된 URL로 교체)
+    const scriptURL = 'https://script.google.com/macros/s/AKfycbw1Ym6zt4neYv10vZchEwguPYWk0s87V38bCm15t13OJI6zNrieqVcPi2gvPtGP0gHpvg/exec';
+
+    fetch(scriptURL, {
+        method: 'POST',               // POST 요청
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(data),   // JSON 형태로 전송
         mode: 'cors'
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error("Network response was not ok");
-        }
-        return response.text();
-    })
+    .then(response => response.json())
     .then(res => {
-        console.log("응모 완료:", res);
-        hideFormContainer();
+        console.log("서버 응답:", res);
+        if (res.status === "success") {
+            // 성공 처리
+            // 예: 폼 숨기기
+            hideFormContainer(); 
+        } else {
+            // 오류 처리
+            console.warn("서버에서 오류 반환:", res.message);
+        }
     })
     .catch(error => {
-        console.error("응모 실패:", error);
+        console.error("fetch 오류:", error);
     });
 }
+
 
 /** "다시하기" */
 function prapare() {
