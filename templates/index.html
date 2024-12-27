@@ -143,6 +143,37 @@
             margin-bottom: 5px;
             display: block;
         }
+                /* 라운드 피드백 페이지 */
+        #round-feedback-page h2 {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        #round-feedback-page .feedback-audio {
+            margin: 10px 0;
+        }
+        #round-feedback-page .feedback-text {
+            font-size: 20px;
+            line-height: 1.4;
+            margin: 15px 0;
+        }
+        .mismatch {
+            color: red; /* 인식이 틀린 부분 빨간색 */
+            font-weight: bold;
+        }
+        .score-feedback {
+            font-size: 26px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .score-feedback.good {
+            color: green;
+        }
+        .score-feedback.normal {
+            color: orange;
+        }
+        .score-feedback.bad {
+            color: red;
+        }
     </style>
 </head>
 <body>
@@ -163,12 +194,12 @@
             <h2>마이크 테스트</h2>
             <p id="test-instruction">마이크에 "{{ test_sentence }}"라고 말해주세요.</p>
             <button id="test-mic-btn">말하기</button>
-            <p id="mic-status"></p>            
+            <p id="mic-status"></p>
         </div>
 
         <!-- Game Start Page -->
         <div id="game-start-page" class="page">
-            <img src="{{ url_for('static', filename='images/game_start.png') }}" alt="게임 시작" id="game-start-image">            
+            <img src="{{ url_for('static', filename='images/game_start.png') }}" alt="게임 시작" id="game-start-image">
         </div>
 
         <!-- Round Page -->
@@ -177,6 +208,20 @@
             <div id="countdown">5</div>
             <p id="game-text" class="hidden"></p>
             <p id="game-status"></p>
+        </div>
+
+        <!-- Round Feedback Page -->
+        <div id="round-feedback-page" class="page">
+            <h2>라운드 결과</h2>
+            <!-- 음성 재생 버튼 / 플레이어 -->
+            <div class="feedback-audio">
+                <audio id="recorded-audio" controls></audio>
+            </div>
+            <!-- 실제로 인식된 텍스트와 원문 비교 표시 -->
+            <p class="feedback-text">원문: <span id="original-text"></span></p>
+            <p class="feedback-text">인식: <span id="recognized-text"></span></p>
+            <p class="score-feedback" id="score-feedback-text"></p>
+            <button id="next-round-btn">다음 라운드</button>
         </div>
 
         <!-- Score Submission Page -->
@@ -193,7 +238,7 @@
                 <input type="text" id="name" name="name" required><br>
 
                 <button type="submit">제출</button>
-            </form>            
+            </form>
         </div>
 
         <!-- Results Page -->
