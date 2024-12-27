@@ -1,4 +1,3 @@
-
 let mediaRecorder;
 let audioChunks = [];
 let currentRound = 1;
@@ -28,9 +27,6 @@ const whisperScoreDisplay = document.getElementById('whisper-score');
 
 const scoreForm = document.getElementById('score-form');
 const retryBtnResults = document.getElementById('retry-btn-results');
-
-// 마이크 테스트 문구 (index.html에서 전달)
-const testSentence = typeof testSentence !== 'undefined' ? testSentence : "인생을 맛있게";
 
 // 초기화 함수: 하나의 페이지만 active
 function showPage(page) {
