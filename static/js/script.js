@@ -11,6 +11,9 @@ let micTestPassed = false;
 /** 이미 사용한 문장 리스트 */
 let usedSentences = []; 
 
+/** 현재 라운드에서 불러온 원문을 저장해둘 변수 */
+let lastReference = ""; 
+
 // 기존 필드 or 문구
 const requiredTestSentence = typeof testSentence !== 'undefined' ? testSentence : "인생을 맛있게";
 
@@ -203,7 +206,6 @@ function fetchGameSentenceAndStartRecording() {
         attempts++;
         if (attempts > 5) {
             console.warn("중복 제거 실패, 5회 시도 후 중복 문장이라도 진행합니다.");
-            // 그냥 proceed with last sentence
             proceedRecording("어쩔 수 없이 중복 문장", true);
             return;
         }
@@ -226,7 +228,6 @@ function fetchGameSentenceAndStartRecording() {
                     console.log("중복 문장 감지, 재시도...");
                     fetchDistinctSentence(); // 재시도
                 } else {
-                    // 중복 아님
                     usedSentences.push(gameSentence);
                     proceedRecording(gameSentence, false);
                 }
@@ -238,7 +239,7 @@ function fetchGameSentenceAndStartRecording() {
     }
 
     function proceedRecording(gameSentence, forced) {
-        // forced=true이면 중복 문장 강행
+        lastReference = gameSentence; // <<--- 저장해서 오류 시에도 표시
         gameText.innerText = gameSentence;
         gameText.classList.remove('hidden');
         gameStatus.innerText = "녹음 중...";
@@ -302,13 +303,13 @@ function sendAudio(audioData, referenceSentence) {
     .then(data => {
         if (data.error) {
             console.error('STT 변환 실패:', data.error);
-            handleTranscriptionFail(); // 0점
+            handleTranscriptionFail();
             return;
         }
         const { scores, stt_text, audio_path } = data;
         if (!scores || typeof scores.Whisper !== 'number' || !stt_text) {
             console.warn('STT 결과 데이터 이상');
-            handleTranscriptionFail(); // 0점
+            handleTranscriptionFail();
             return;
         }
         const whisperScore = scores.Whisper;
@@ -320,7 +321,7 @@ function sendAudio(audioData, referenceSentence) {
     })
     .catch(error => {
         console.error('STT 변환 오류:', error);
-        handleTranscriptionFail(); // 0점
+        handleTranscriptionFail();
     });
 }
 
@@ -359,12 +360,13 @@ nextRoundBtn.addEventListener('click', () => {
     }
 });
 
-/** 오류 발생 시 0점 처리 & 피드백 페이지 표시 → 사용자가 "다음 라운드" 클릭 */
+/** 오류 발생 시 0점 처리 & 피드백 페이지 표시 (원문=lastReference, 인식="", 점수=0) */
 function handleTranscriptionFail() {
     console.warn("Transcription failed or no speech -> 0점 처리.");
-    // 현 라운드 0점
+    const whisperScore = 0;
     // totalScore += 0
-    showRoundFeedback("", "", 0, "");
+    // '원문' -> lastReference / '인식' -> "" / score=0
+    showRoundFeedback(lastReference, "", whisperScore, "");
 }
 
 /** 게임 종료 → formContainer로 이동하여 최종 점수 제출 */
