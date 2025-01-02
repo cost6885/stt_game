@@ -38,9 +38,14 @@ def compare_sentences(reference, user_input):
 
 def transcribe_with_whisper(audio_path):
     try:
-        # OpenAI Audio API
-        transcript = openai.Audio.transcribe("whisper-1", open(audio_path, "rb"))
-        return transcript['text']
+        with open(audio_path, "rb") as audio_file:
+            # 최신 버전(1.0.0 이상)에서의 Audio API
+            transcript = openai.Audio.transcribe(
+                model="whisper-1",
+                file=audio_file
+            )
+        # transcript는 dict 형태를 반환한다고 가정
+        return transcript.get("text", "")
     except Exception as e:
         print(f"Whisper API Error: {e}")
         return None
