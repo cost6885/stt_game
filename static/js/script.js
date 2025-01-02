@@ -433,26 +433,20 @@ function sendToGoogleSheets() {
       time: new Date().toLocaleString()
   };
 
-  // EC2 Node 서버 주소, HTTPS로 변경
-  const YOUR_DOMAIN = "https://nsdigitalt.click";
-  const nodeServerURL = `${YOUR_DOMAIN}/google`;
-
-  fetch(nodeServerURL, {
+  // Flask의 /save_to_sheet 엔드포인트
+  fetch('/save_to_sheet', {
       method: 'POST',
-      headers: { "Content-Type": "application/json" },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
   })
-  .then(response => response.json())
+  .then(response => response.json())  // Apps Script 응답이 JSON이라고 가정
   .then(res => {
-      console.log("Node server 응답:", res);
-      if (res.status === "success") {
-          hideFormContainer(); 
-      } else {
-          console.warn("서버에서 오류 반환:", res.message);
-      }
+      console.log("Flask -> GAS 응답:", res);
+      // 적절히 처리
+      hideFormContainer(); 
   })
   .catch(error => {
-      console.error("Node fetch 오류:", error);
+      console.error("sendToGoogleSheets 오류:", error);
   });
 }
 
