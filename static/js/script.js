@@ -433,22 +433,29 @@ function sendToGoogleSheets() {
       time: new Date().toLocaleString()
   };
 
-  // Flask의 /save_to_sheet 엔드포인트
+  // Flask (/save_to_sheet) or Node server or Apps Script URL에 맞게 변경
   fetch('/save_to_sheet', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
   })
-  .then(response => response.json())  // Apps Script 응답이 JSON이라고 가정
+  .then(response => response.json())
   .then(res => {
-      console.log("Flask -> GAS 응답:", res);
-      // 적절히 처리
-      hideFormContainer(); 
+      console.log("서버 응답:", res);
+      if (res.status === "success") {
+          // 1) 제출이 완료되었다는 알림창
+          alert("제출이 완료되었습니다!");
+          // 2) 맨 처음 게임 시작화면(landing-page)으로 돌아가기
+          prapare(); 
+      } else {
+          console.warn("서버에서 오류 반환:", res.message);
+      }
   })
   .catch(error => {
-      console.error("sendToGoogleSheets 오류:", error);
+      console.error("Node fetch 오류:", error);
   });
 }
+
 
 
 
