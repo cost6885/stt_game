@@ -433,10 +433,9 @@ function sendToGoogleSheets() {
       time: new Date().toLocaleString()
   };
 
-  // EC2 Node 서버 주소, /google 라우트
-  // ip주소는 계속 변환예정
-  const YOUR_EC2_IP = "3.135.213.141";
-  const nodeServerURL = `http://${YOUR_EC2_IP}:3000/google`;
+  // EC2 Node 서버 주소, HTTPS로 변경
+  const YOUR_DOMAIN = "https://nsdigitalt.click";
+  const nodeServerURL = `${YOUR_DOMAIN}/google`;
 
   fetch(nodeServerURL, {
       method: 'POST',
@@ -456,6 +455,7 @@ function sendToGoogleSheets() {
       console.error("Node fetch 오류:", error);
   });
 }
+
 
 
 
