@@ -295,6 +295,12 @@
             object-fit: cover; /* 이미지를 360x360 영역에 맞춤 */
         }
 
+        /* 강조 텍스트 스타일 */
+        .highlight {
+            color: #ff4d4d; /* 빨간색 */
+            font-weight: bold;
+            font-size: 1.1em; /* 약간 더 크게 */
+        }
         
     </style>
 </head>
@@ -322,13 +328,18 @@
         <!-- Microphone Test Page -->
         <div id="mic-test-page" class="page">
             <h2>🔎마이크 테스트📣</h2>
-            <p>본 게임을 진행하기 위해서는 마이크 사용이 필수입니다.<br>
-                좌측상단에 팝업창이 뜨면 마이크 연결 허용을 선택해주세요.<br>
+            <p3>게임을 진행하기 위해서는 마이크 사용이 필수입니다.<br>
+                팝업이 뜨면 마이크 연결 허용을 선택해주세요.<br>
+            </p3>
+            <p id="test-instruction">
+                연결이 완료되셨다면 
+                <span class="highlight">"{{ test_sentence }}"</span>
+                라고 말해주세요.
             </p>
-            <p id="test-instruction">연결이 완료되셨다면 "{{ test_sentence }}"라고 말해주세요.</p>
             <button id="test-mic-btn">말하기</button>
             <p id="mic-status"></p>
         </div>
+
 
         <!-- Round Page -->
         <div id="round-page" class="page">
