@@ -499,8 +499,7 @@ function sendToGoogleSheets() {
       company,
       employeeId,
       name,
-      totalScore: totalScore.toFixed(2),
-      time: new Date().toLocaleString()
+      totalScore: totalScore.toFixed(2),      
   };
 
   // Flask (/save_to_sheet) or Node server or Apps Script URL에 맞게 변경
