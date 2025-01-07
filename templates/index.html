@@ -48,6 +48,11 @@
             margin-bottom: 10px;
              font-size: 40px;
         }
+
+        h4 {
+            margin-bottom: 10px;
+             font-size: 70px;
+        }
         
         p {
             margin-bottom: 15px;
@@ -264,6 +269,25 @@
             transition: width 0.3s ease; /* 너비 변경 시 부드러운 애니메이션 */
         }
 
+        /* ★ 추가: 점수별 이미지 표시(바깥에 위치) */
+        #score-image-wrapper {
+            position: fixed;
+            top: 50%; /* 화면의 세로 중앙 */
+            left: 25%; /* 화면의 가로 중앙 */
+            transform: translateY(-50%); /* 세로 방향 중심 정렬 */
+            width: 360px;
+            height: 360px;
+            z-index: 9999;
+            display: none; /* 초기 숨김 */
+        }
+
+        #score-image-wrapper img {
+            width: 360px;
+            height: 360px;
+            object-fit: cover; /* 이미지를 360x360 영역에 맞춤 */
+        }
+
+        
     </style>
 </head>
 <body>
@@ -302,7 +326,7 @@
 
         <!-- Round Feedback Page -->
         <div id="round-feedback-page" class="page">
-            <h2>라운드 결과</h2>
+            <h4>라운드 결과</h2>
             <div class="feedback-audio">                
                 <audio id="recorded-audio" src="" controls autoplay></audio>
             </div>
@@ -313,12 +337,16 @@
         </div>
     </div>
 
-    <!-- game-start-page: container 밖에 위치 -->
+    <!-- game-start-page -->
+    <!-- game_start.png -> loading.png 로 변경 -->
     <div id="game-start-page" class="page">
-        <img src="{{ url_for('static', filename='images/game_start.png') }}" alt="게임 시작" id="game-start-image">
+        <img src="{{ url_for('static', filename='images/loading.png') }}" alt="게임 시작" id="game-start-image">
     </div>
 
+    <!-- 점수별 이미지 (container 밖) -->
+    <div id="score-image-wrapper"></div>
 
+    
     <!-- formContainer: 최종 점수 제출을 위한 폼 (가로 정렬) -->
     <div id="formContainer">
     <h2>총 점수: <span id="final-score">0</span></h2>
