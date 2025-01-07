@@ -287,23 +287,31 @@ function startRecording(referenceSentence) {
                 audioChunks = [];
             };
 
-            // ★ 여기가 핵심: 10초 Progress Bar
+            // ★ Progress Bar 설정
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
-            progressContainer.style.display = "block";    // 표시
-            progressBar.style.width = "100%";             // 초기
+            progressContainer.style.display = "block"; // Progress Bar 표시
+            progressBar.style.width = "100%"; // 초기 너비
 
-            let recordTime = 10;
+            // 부드러운 감소를 위해 transition 설정
+            progressBar.style.transition = "width 0.1s linear";
+
+            let totalTime = 10; // 총 10초
+            let elapsedTime = 0;
+            let intervalDuration = 100; // 0.1초 간격
+            const steps = totalTime * 1000 / intervalDuration; // 총 업데이트 횟수
+            const decrement = 100 / steps; // 매 업데이트 시 감소율
+
             let recordInterval = setInterval(() => {
-                recordTime--;
-                if (recordTime <= 0) {
+                elapsedTime += intervalDuration / 1000; // 경과 시간 업데이트
+                if (elapsedTime >= totalTime) {
                     clearInterval(recordInterval);
-                    stopRecording(); // 10초 도달하면 녹음 중지
+                    stopRecording(); // 10초 도달 시 녹음 중지
                 } else {
-                    let percentage = (recordTime / 10) * 100;
-                    progressBar.style.width = percentage + "%";
+                    const percentage = 100 - (elapsedTime / totalTime) * 100;
+                    progressBar.style.width = `${percentage}%`;
                 }
-            }, 1000);
+            }, intervalDuration);
 
         })
         .catch(error => {
