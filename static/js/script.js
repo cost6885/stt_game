@@ -182,8 +182,15 @@ function startGameSequence() {
 
 /** 라운드 시작 */
 function startRound(round) {
-    if (!micTestPassed) { ... }
-    if (round > totalRounds) { ... }
+
+    if (!micTestPassed) {
+        micStatus.innerText = "마이크 테스트 통과 후 라운드 진행 가능.";
+        return;
+    }
+    if (round > totalRounds) {
+        endGame();
+        return;
+    }
 
     showPage(roundPage);
     roundTitle.innerText = `라운드 ${round}`;
