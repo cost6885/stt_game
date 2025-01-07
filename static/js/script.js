@@ -436,6 +436,11 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
 /** "다음 라운드" or "결과보기" 버튼 */
 nextRoundBtn.addEventListener('click', () => {
     roundFeedbackPage.classList.remove('active');
+
+    // ★ 점수 이미지 숨기기
+    const scoreImageWrapper = document.getElementById('score-image-wrapper');
+    scoreImageWrapper.style.display = "none";
+    
     currentRound++;
     if (currentRound > totalRounds) {
         endGame();
@@ -454,6 +459,10 @@ function handleTranscriptionFail() {
 
 /** 게임 종료 → formContainer로 이동하여 최종 점수 제출 */
 function endGame() {
+    // ★ 점수 이미지 숨기기
+    const scoreImageWrapper = document.getElementById('score-image-wrapper');
+    scoreImageWrapper.style.display = "none";
+    
     document.getElementById('final-score').innerText = totalScore.toFixed(2);
     showFormContainer();
 }
