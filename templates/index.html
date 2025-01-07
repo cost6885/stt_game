@@ -301,6 +301,26 @@
             font-weight: bold;
             font-size: 1.1em; /* 약간 더 크게 */
         }
+
+        /* 피드백 테이블 스타일 */
+        .feedback-table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse; /* 테이블 경계선 겹침 제거 */
+            text-align: left; /* 전체 좌측 정렬 */
+        }
+        
+        .feedback-table th,
+        .feedback-table td {
+            padding: 10px;
+            border: 1px solid #ddd; /* 셀 경계선 */
+            font-size: 16px;
+        }
+        
+        .feedback-table th {
+            background-color: #f4f4f4; /* 헤더 배경색 */
+            font-weight: bold; /* 헤더 강조 */
+        }
         
     </style>
 </head>
@@ -360,11 +380,20 @@
             <div class="feedback-audio">                
                 <audio id="recorded-audio" src="" controls autoplay></audio>
             </div>
-            <p class="feedback-text">원문: <span id="original-text"></span></p>
-            <p class="feedback-text">인식: <span id="recognized-text"></span></p>
+            <table class="feedback-table">
+                <tr>
+                    <th>원문</th>
+                    <td id="original-text"></td>
+                </tr>
+                <tr>
+                    <th>인식</th>
+                    <td id="recognized-text"></td>
+                </tr>
+            </table>
             <p class="score-feedback" id="score-feedback-text"></p>
             <button id="next-round-btn">다음 라운드</button>
         </div>
+
     </div>
 
     <!-- game-start-page -->
