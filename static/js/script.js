@@ -344,6 +344,28 @@ function sendAudio(audioData, referenceSentence) {
     });
 }
 
+
+// 점수별 이미지 매핑 (예시)
+function getScoreImage(score) {
+    // 조건: 0, 0~10, 10~20, 20~30, 30~40, 40~60, 60~70, 70~80, 80~90, 100
+    // stt_game/static/images/ 폴더 내 파일명
+    if (score === 0) return "ya.gif";
+    else if (score > 0 && score <= 10) return "jjugul.gif";
+    else if (score > 10 && score <= 20) return "myom.gif";
+    else if (score > 20 && score <= 30) return "showr.gif";
+    else if (score > 30 && score <= 40) return "whatdo.gif";
+    else if (score > 40 && score <= 60) return "youcandoit.gif";
+    else if (score > 60 && score <= 70) return "thismakes.gif";   // 주의: user typed 'thismakesgif' but it might be 'thismakes.gif'
+    else if (score > 70 && score <= 80) return "party.gif";
+    else if (score > 80 && score <= 90) return "thumbup.gif";
+    else if (score === 100) return "welldone.gif";
+    // 점수가 90~100 사이지만 100이 아니면 어쩌나? 
+    // 이하 임의 처리
+    else if (score > 90 && score < 100) return "thumbup.gif"; 
+    return null;
+}
+
+
 /** 라운드 피드백 표시 */
 function showRoundFeedback(reference, recognized, score, audioPath) {
     // 라운드 페이지 숨기고 피드백 페이지 활성화
@@ -372,6 +394,19 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
     }
     scoreFeedbackTextEl.className = "score-feedback " + feedbackClass;
     scoreFeedbackTextEl.textContent = `${feedbackText} ( ${score.toFixed(2)}% )`;
+    // ★ 추가: 점수별 이미지 표시
+    const scoreImageFile = getScoreImage(score);
+    const scoreImageWrapper = document.getElementById('score-image-wrapper');
+    if (scoreImageFile) {
+        // 경로: /static/images/<파일명>
+        scoreImageWrapper.innerHTML = `
+            <img src="/static/images/${scoreImageFile}" alt="scoreImage">
+        `;
+        scoreImageWrapper.style.display = "block";
+    } else {
+        // 해당 구간에 이미지 없으면 숨김
+        scoreImageWrapper.style.display = "none";
+    }
 }
 
 /** "다음 라운드" or "결과보기" 버튼 */
