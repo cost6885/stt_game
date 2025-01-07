@@ -321,6 +321,38 @@
             background-color: #f4f4f4; /* 헤더 배경색 */
             font-weight: bold; /* 헤더 강조 */
         }
+
+
+        #background-image {
+            position: fixed; /* 화면에 고정 */
+            top: 0; /* 화면의 맨 위 */
+            left: 0; /* 화면의 맨 왼쪽 */
+            width: 100%; /* 화면 너비만큼 확장 */
+            height: 100%; /* 화면 높이만큼 확장 */
+            z-index: -1; /* 가장 뒤로 보냄 */
+            overflow: hidden; /* 잘리는 부분 숨김 */
+        }
+    
+        #background-image img {
+            position: absolute;
+            top: 50%; /* 수직 중앙 정렬 */
+            left: 50%; /* 수평 중앙 정렬 */
+            transform: translate(-50%, -50%); /* 정확히 가운데 위치 */
+            opacity: 0.2; /* 투명도 20% 설정 */
+            width: 150%; /* 적당한 크기로 늘림 */
+            height: auto; /* 비율 유지 */
+            animation: rotate 60s linear infinite; /* 60초 동안 회전, 무한 반복 */
+        }
+    
+        /* 회전 애니메이션 */
+        @keyframes rotate {
+            0% {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
         
     </style>
 </head>
@@ -408,47 +440,49 @@
     
     <!-- formContainer: 최종 점수 제출을 위한 폼 (가로 정렬) -->
     <div id="formContainer">
-    <h2>총 점수: <span id="final-score">0</span></h2>
+        <h2>총 점수: <span id="final-score">0</span></h2>
+    
+        <div class="form-group">
+            <label for="company">회사</label>
+            <select id="company">
+                <option value="">회사를 선택하세요</option>
+                <option value="농심">농심</option>
+                <option value="농심태경">농심태경</option>
+                <option value="율촌화학">율촌화학</option>
+                <option value="메가마트">메가마트</option>
+                <option value="농심엔지니어링">농심엔지니어링</option>
+                <option value="엔디에스">엔디에스</option>
+                <option value="농심미분">농심미분</option>
+                <option value="호텔농심">호텔농심</option>
+                <option value="농심홀딩스">농심홀딩스</option>
+                <option value="농심캐피탈">농심캐피탈</option>
+                <option value="이스턴웰스">이스턴웰스</option>
+                <option value="뉴테라닉스">뉴테라닉스</option>
+                <option value="엔에스아리아">엔에스아리아</option>
+                <option value="농심개발">농심개발</option>
+                <option value="율촌재단">율촌재단</option>
+                <option value="캐처스">캐처스</option>
+                <option value="농심이스포츠">농심이스포츠</option>
+            </select>
+        </div>
 
-    <div class="form-group">
-        <label for="company">회사</label>
-        <select id="company">
-            <option value="">회사를 선택하세요</option>
-            <option value="농심">농심</option>
-            <option value="농심태경">농심태경</option>
-            <option value="율촌화학">율촌화학</option>
-            <option value="메가마트">메가마트</option>
-            <option value="농심엔지니어링">농심엔지니어링</option>
-            <option value="엔디에스">엔디에스</option>
-            <option value="농심미분">농심미분</option>
-            <option value="호텔농심">호텔농심</option>
-            <option value="농심홀딩스">농심홀딩스</option>
-            <option value="농심캐피탈">농심캐피탈</option>
-            <option value="이스턴웰스">이스턴웰스</option>
-            <option value="뉴테라닉스">뉴테라닉스</option>
-            <option value="엔에스아리아">엔에스아리아</option>
-            <option value="농심개발">농심개발</option>
-            <option value="율촌재단">율촌재단</option>
-            <option value="캐처스">캐처스</option>
-            <option value="농심이스포츠">농심이스포츠</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label for="employeeId">사번</label>
-        <input type="text" id="employeeId" />
-    </div>
-
-    <div class="form-group">
-        <label for="name">이름</label>
-        <input type="text" id="name" />
+        <div class="form-group">
+            <label for="employeeId">사번</label>
+            <input type="text" id="employeeId" />
+        </div>
+    
+        <div class="form-group">
+            <label for="name">이름</label>
+            <input type="text" id="name" />
+        </div>
+    
+        <button class="sendform" onclick="sendToGoogleSheets()">응모하기</button>
+        <button class="sendform" onclick="prapare()">다시하기</button>
     </div>
     
-    <button class="sendform" onclick="sendToGoogleSheets()">응모하기</button>
-    <button class="sendform" onclick="prapare()">다시하기</button>
-</div>
-    
-
+    <div id="background-image">
+        <img src="{{ url_for('static', filename='images/letters.gif') }}" alt="Background Animation">
+    </div>    
 
     <!-- script.js -->
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
