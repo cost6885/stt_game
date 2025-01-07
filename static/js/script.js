@@ -182,35 +182,37 @@ function startGameSequence() {
 
 /** 라운드 시작 */
 function startRound(round) {
-    if (!micTestPassed) {
-        micStatus.innerText = "마이크 테스트 통과 후 라운드 진행 가능.";
-        return;
-    }
-    if (round > totalRounds) {
-        endGame();
-        return;
-    }
-    // 라운드 페이지 표시
-    showPage(roundPage);
-    // 라운드 제목
-    roundTitle.innerText = `라운드 ${round}`;
-    // 버튼 라벨 업데이트 ("다음 라운드" or "결과보기")
-    updateNextRoundButtonLabel();
+    if (!micTestPassed) { ... }
+    if (round > totalRounds) { ... }
 
+    showPage(roundPage);
+    roundTitle.innerText = `라운드 ${round}`;
     gameStatus.innerText = '';
     gameText.classList.add('hidden');
 
     let countdown = 5;
     countdownDisplay.innerText = countdown;
+
+    // ★ Progress Bar 초기화 (바 100%)
+    const progressBar = document.getElementById('progress-bar');
+    progressBar.style.width = "100%"; // 초기 100%
+    
     countdownInterval = setInterval(() => {
         countdown--;
+
+        // 남은 시간을 표시 (숫자)
         if (countdown <= 0) {
             clearInterval(countdownInterval);
             countdownDisplay.innerText = '';
-            // 중복 없는 문장 요청 시도
+            // 여기가 카운트다운 종료 시점 → fetchGameSentenceAndStartRecording();
             fetchGameSentenceAndStartRecording();
         } else {
             countdownDisplay.innerText = countdown;
+
+            // ★ Progress Bar 너비 업데이트
+            // 남은 시간(countdown) / 전체(5) * 100
+            let percentage = (countdown / 5) * 100;
+            progressBar.style.width = percentage + "%";
         }
     }, 1000);
 }
