@@ -182,7 +182,6 @@ function startGameSequence() {
 
 /** 라운드 시작 */
 function startRound(round) {
-
     if (!micTestPassed) {
         micStatus.innerText = "마이크 테스트 통과 후 라운드 진행 가능.";
         return;
@@ -200,26 +199,17 @@ function startRound(round) {
     let countdown = 5;
     countdownDisplay.innerText = countdown;
 
-    // ★ Progress Bar 초기화 (바 100%)
-    const progressBar = document.getElementById('progress-bar');
-    progressBar.style.width = "100%"; // 초기 100%
-    
+    // Progress Bar 안 씀 (5초 카운트다운은 숫자만)
+    // => remove code for bar here
+
     countdownInterval = setInterval(() => {
         countdown--;
-
-        // 남은 시간을 표시 (숫자)
         if (countdown <= 0) {
             clearInterval(countdownInterval);
             countdownDisplay.innerText = '';
-            // 여기가 카운트다운 종료 시점 → fetchGameSentenceAndStartRecording();
             fetchGameSentenceAndStartRecording();
         } else {
             countdownDisplay.innerText = countdown;
-
-            // ★ Progress Bar 너비 업데이트
-            // 남은 시간(countdown) / 전체(5) * 100
-            let percentage = (countdown / 5) * 100;
-            progressBar.style.width = percentage + "%";
         }
     }, 1000);
 }
@@ -297,10 +287,24 @@ function startRecording(referenceSentence) {
                 audioChunks = [];
             };
 
-            // 10초 후 녹음 종료
-            setTimeout(() => {
-                stopRecording();
-            }, 10000);
+            // ★ 여기가 핵심: 10초 Progress Bar
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            progressContainer.style.display = "block";    // 표시
+            progressBar.style.width = "100%";             // 초기
+
+            let recordTime = 10;
+            let recordInterval = setInterval(() => {
+                recordTime--;
+                if (recordTime <= 0) {
+                    clearInterval(recordInterval);
+                    stopRecording(); // 10초 도달하면 녹음 중지
+                } else {
+                    let percentage = (recordTime / 10) * 100;
+                    progressBar.style.width = percentage + "%";
+                }
+            }, 1000);
+
         })
         .catch(error => {
             console.error('녹음 접근 오류:', error);
@@ -308,10 +312,15 @@ function startRecording(referenceSentence) {
         });
 }
 
+
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
         gameStatus.innerText = "녹음 중지됨.";
+
+        // 녹음 끝나면 Progress Bar 다시 숨기기
+        const progressContainer = document.getElementById('progress-container');
+        progressContainer.style.display = "none";
     }
 }
 
