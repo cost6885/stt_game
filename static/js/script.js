@@ -418,6 +418,10 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
     }
     scoreFeedbackTextEl.className = "score-feedback " + feedbackClass;
     scoreFeedbackTextEl.textContent = `${feedbackText} ( ${score.toFixed(2)}% )`;
+    
+    // ★ 추가: 버튼 이름 업데이트
+    updateNextRoundButtonLabel();    
+    
     // ★ 추가: 점수별 이미지 표시
     const scoreImageFile = getScoreImage(score);
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
