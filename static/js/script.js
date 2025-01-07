@@ -499,12 +499,13 @@ function sendToGoogleSheets() {
       return;
   }
 
-  let data = {
-      company,
-      employeeId,
-      name,
-      totalScore: totalScore.toFixed(2),      
-  };
+let data = {
+    company,
+    employeeId,
+    name,
+    totalScore: totalScore.toFixed(2),
+    time: new Date().toISOString(), // 현재 시간을 ISO 형식으로 추가
+};
 
   // Flask (/save_to_sheet) or Node server or Apps Script URL에 맞게 변경
   fetch('/save_to_sheet', {
