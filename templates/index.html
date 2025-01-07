@@ -270,14 +270,14 @@
             background-color: #ff4d4d; /* 빨간색 바 */
             border-radius: 10px;       /* 둥근 모서리 */
             width: 100%;               /* 초기 100% (카운트다운 시작 시) */
-            transition: width 0.3s ease; /* 너비 변경 시 부드러운 애니메이션 */
+            transition: width 1s linear; /* 너비 변경을 1초 동안 부드럽게 진행 */
         }
 
         /* ★ 추가: 점수별 이미지 표시(바깥에 위치) */
         #score-image-wrapper {
             position: fixed;
             top: 50%; /* 화면의 세로 중앙 */
-            left: 25%; /* 화면의 가로 중앙 */
+            left: 10%; /* 화면의 가로 중앙 */
             transform: translateY(-50%); /* 세로 방향 중심 정렬 */
             width: 360px;
             height: 360px;
