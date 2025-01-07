@@ -397,12 +397,8 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
     roundFeedbackPage.classList.add('active');
 
     // 자동재생 시도 (브라우저 정책에 따라 차단 가능)
-    recordedAudioEl.src = audioPath || "";    
-    recordedAudioEl.autoplay = true;
+    recordedAudioEl.src = audioPath || "";        
     recordedAudioEl.load();
-    recordedAudioEl.play().catch(err => {
-        console.warn("자동 재생이 차단되었습니다:", err);
-    });
     
     originalTextEl.innerHTML = reference;
     recognizedTextEl.innerHTML = highlightDifferences(reference, recognized);
