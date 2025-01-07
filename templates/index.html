@@ -298,11 +298,13 @@
     <div class="container">
         <!-- Landing Page -->
         <div id="landing-page" class="page active">
-            <h1>나의 읽기 실력은?</h1>
+            <h4>나의 읽기 실력은?</h4>
             <p>
-                게임 방법:<br>
-                <strong>5초 뒤 디지털 관련 문장이 나타납니다.</strong><br>
-                해당 문장을 또박또박 정확하게 읽어보세요.<br>
+                📘게임 방법<br>
+                게임은 총 3라운드로 진행됩니다.<br>
+                라운드마다 등장하는 문장을 읽어보세요.<br>
+                또박또박 정확하게 읽어야 점수가 높습니다.<br>
+                준비가 되셨다면 하단의 게임 준비 버튼을 눌러주세요.<br>                
                 <p2>*본 게임은 Speech To Text 기술이 활용되었습니다.</p2>
             </p>
             <button id="start-game-btn">게임 준비</button>
@@ -310,8 +312,11 @@
 
         <!-- Microphone Test Page -->
         <div id="mic-test-page" class="page">
-            <h2>마이크 테스트</h2>
-            <p id="test-instruction">마이크에 "{{ test_sentence }}"라고 말해주세요.</p>
+            <h2>🔎마이크 테스트📣</h2>
+            <p>본 게임을 진행하기 위해서는 마이크 사용이 필수입니다.<br>
+                좌측상단에 팝업창이 뜨면 마이크 연결 허용을 선택해주세요.<br>
+            </p>
+            <p id="test-instruction">연결이 완료되셨다면 "{{ test_sentence }}"라고 말해주세요.</p>
             <button id="test-mic-btn">말하기</button>
             <p id="mic-status"></p>
         </div>
