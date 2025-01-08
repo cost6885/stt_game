@@ -123,53 +123,52 @@ def process():
 
 @app.route('/save_to_sheet', methods=['POST'])
 def save_to_sheet():
+    """Google Apps Script에 데이터를 저장하는 라우트"""
     try:
         data = request.get_json()
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
-        script_url = "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec"
-        response = requests.post(script_url, json=data)
-
-        if response.status_code == 200:
-            return response.json(), 200
-        else:
-            print(f"Save to sheet failed: {response.text}")
-            return jsonify({"error": "Failed to save data", "details": response.text}), 500
+        response = fetch_from_google_script(payload=data)  # POST 요청
+        return jsonify(response), 200
     except Exception as e:
         print(f"Error in save_to_sheet: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+def fetch_from_google_script(endpoint: str = "", payload: dict = None):
+    try:
+        script_url = "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec" + endpoint
+        if payload:
+            response = requests.post(script_url, json=payload)
+        else:
+            response = requests.get(script_url)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Google Script Error: {response.text}")
+    except Exception as e:
+        raise Exception(f"Error communicating with Google Apps Script: {e}")
+
 
 
 @app.route('/get_rankings', methods=['GET'])
 def get_rankings():
     try:
         # 1. 로컬 데이터 파일(ranking_data.json)에서 데이터 가져오기
-        local_file_path = "ranking_data.json"  # app.py와 같은 위치
+        local_file_path = "ranking_data.json"
         with open(local_file_path, "r", encoding="utf-8") as file:
             local_data = json.load(file)
-        print("Loaded rankings from local file")
         return jsonify(local_data), 200
 
     except Exception as local_error:
-        print(f"Error fetching rankings from local file: {local_error}")
-
-        # 2. Google Apps Script에서 데이터 가져오기 (우회)
+        print(f"Local file error: {local_error}")
+        # 2. Google Apps Script에서 데이터 가져오기
         try:
-            timestamp = datetime.now().timestamp()
-            script_url = f"https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec?action=getRankings&timestamp={timestamp}"
-            response = requests.get(script_url, allow_redirects=True)
-
-            if response.status_code == 200:
-                print("Loaded rankings from Google Apps Script")
-                return response.json(), 200
-            else:
-                print(f"Get rankings failed: {response.text}")
-                return jsonify({"error": "Failed to fetch rankings", "details": response.text}), 500
-
+            return jsonify(fetch_from_google_script("?action=getRankings")), 200
         except Exception as script_error:
-            print(f"Error fetching rankings from Google Apps Script: {script_error}")
-            return jsonify({"error": "Unable to fetch rankings from both sources", "details": str(script_error)}), 500
+            return jsonify({"error": str(script_error)}), 500
 
 
 
