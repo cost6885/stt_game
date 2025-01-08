@@ -85,8 +85,16 @@ function hideFormContainer() {
 
 /** 시작 버튼 */
 startGameBtn.addEventListener('click', () => {
+    // 페이지 전환
     showPage(micTestPage);
+
+    // 랭킹 보드 숨기기
+    const rankingBoard = document.getElementById('ranking-board-container');
+    if (rankingBoard) {
+        rankingBoard.style.display = 'none'; // 랭킹 보드 숨기기
+    }
 });
+
 
 /** 마이크 테스트 버튼 */
 testMicBtn.addEventListener('click', async () => {
