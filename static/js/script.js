@@ -139,11 +139,8 @@ function sendAudioForTest(audioData, referenceSentence) {
     .then(data => {
         if (data.error) {
             console.error('마이크 테스트 실패:', data.error);
-            micStatus.innerText = "마이크 테스트 실패: " + data.error;
-
-            // (테스트 편의상) 자동 우회
-            micTestPassed = true;
-            startGameSequence();
+            micStatus.innerText = "마이크 테스트 실패: " + data.error;                       
+            micTestPassed = false;            
             return;
         }
 
@@ -154,13 +151,16 @@ function sendAudioForTest(audioData, referenceSentence) {
             return;
         }
 
-        if (scores.Whisper > 90) {
+        if (scores.Whisper > 50) {
             micStatus.innerText = "마이크 테스트 성공.";
             micTestPassed = true;
             startGameSequence();
         } else {
-            micStatus.innerText = `정확 발화 실패. 점수: ${scores.Whisper.toFixed(2)}`;
+            micStatus.innerText = `말을 하셨나요? 점수: ${Math.round(scores.Whisper)}`;
             micTestPassed = false;
+            // (테스트 편의상) 자동 우회
+            micTestPassed = true;
+            startGameSequence();
         }
     })
     .catch(error => {
