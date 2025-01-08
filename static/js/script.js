@@ -573,7 +573,6 @@ function sendToGoogleSheets() {
 
 
 
-/** 랭킹 보드 표시 함수 */
 function displayRankings() {
     const rankingBoard = document.getElementById('ranking-board-container');
     const rankingList = document.getElementById('ranking-list');
@@ -582,11 +581,11 @@ function displayRankings() {
     rankingBoard.innerHTML = '<p>로딩 중...</p>';
     rankingBoard.style.display = 'block'; // 랭킹 보드 표시
 
-    // 1. 서버에서 랭킹 데이터 가져오기
-    fetch(`https://nsdigitalt.click/get_rankings?timestamp=${Date.now()}`) // 도메인 URL로 변경
+    // 서버에 요청 보내기
+    fetch(`/get_rankings?timestamp=${Date.now()}`) // 서버로 요청
         .then(response => response.json())
         .then(data => {
-            if (data.status !== "success" || !data.rankings || data.rankings.length === 0) {
+            if (!data.rankings || data.rankings.length === 0) {
                 throw new Error("No rankings available from server");
             }
 
@@ -596,37 +595,16 @@ function displayRankings() {
 
             data.rankings.forEach((entry) => {
                 const listItem = document.createElement('li');
-                listItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score.toFixed(2)}, 참여: ${entry.participationCount}회`;
+                listItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
                 rankingList.appendChild(listItem);
             });
         })
-        .catch(serverError => {
-            console.warn('서버 랭킹 데이터를 가져오는 중 오류 발생:', serverError);
-
-            // 2. 스프레드시트 데이터로 우회
-            fetch(`https://script.google.com/macros/s/AKfycbwqSCZ8MrM3F10BnuZEatniAkaOWlnBBPe8-KwbKg_f_EQ2NR0GnD_uRX_XmVn0fCaRzQ/exec`)
-                .then(response => response.json())
-                .then(backupData => {
-                    if (backupData.status !== "success" || !backupData.rankings || backupData.rankings.length === 0) {
-                        throw new Error("No rankings available from spreadsheet");
-                    }
-
-                    // 스프레드시트 데이터로 랭킹 표시
-                    rankingBoard.innerHTML = ''; // 기존 오류 메시지 제거
-                    rankingList.innerHTML = ''; // 기존 랭킹 제거
-
-                    backupData.rankings.forEach((entry) => {
-                        const listItem = document.createElement('li');
-                        listItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score.toFixed(2)}, 참여: ${entry.participationCount}회`;
-                        rankingList.appendChild(listItem);
-                    });
-                })
-                .catch(backupError => {
-                    console.error('스프레드시트 데이터 가져오기 실패:', backupError);
-                    rankingBoard.innerHTML = '<p>랭킹 데이터를 불러올 수 없습니다.</p>';
-                });
+        .catch(error => {
+            console.error('랭킹 데이터를 가져오는 중 오류 발생:', error);
+            rankingBoard.innerHTML = '<p>랭킹 데이터를 불러올 수 없습니다.</p>';
         });
 }
+
 
 // DOMContentLoaded 이벤트가 발생했을 때 displayRankings 실행
 document.addEventListener('DOMContentLoaded', () => {
