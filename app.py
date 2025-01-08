@@ -158,7 +158,7 @@ def get_rankings():
         try:
             timestamp = datetime.now().timestamp()
             script_url = f"https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec?action=getRankings&timestamp={timestamp}"
-            response = requests.get(script_url)
+            response = requests.get(script_url, allow_redirects=True)
 
             if response.status_code == 200:
                 print("Loaded rankings from Google Apps Script")
