@@ -577,21 +577,21 @@ function displayRankings() {
     const rankingBoard = document.getElementById('ranking-board-container');
     const rankingList = document.getElementById('ranking-list');
 
-    // 로딩 메시지 표시
-    rankingBoard.innerHTML = '<p>로딩 중...</p>';
-    rankingBoard.style.display = 'block'; // 랭킹 보드 표시
+    // "로딩 중" 메시지를 rankingList에만 표시
++   rankingList.innerHTML = '<li>로딩 중...</li>';
+    rankingBoard.style.display = 'block';
 
-    // 서버에 요청 보내기
-    fetch(`/get_rankings?timestamp=${Date.now()}`) // 서버로 요청
+    fetch('/get_rankings?timestamp=' + Date.now())
         .then(response => response.json())
         .then(data => {
             if (!data.rankings || data.rankings.length === 0) {
                 throw new Error("No rankings available from server");
             }
 
-            // 서버 데이터로 랭킹 표시
-            rankingBoard.innerHTML = ''; // 기존 로딩 메시지 제거
-            rankingList.innerHTML = ''; // 기존 랭킹 제거
+
+            // 굳이 rankingBoard 전체를 날리지 말고,
+            // 이미 h3도 있고, ul도 있으니 ul만 비워주면 됨
++           rankingList.innerHTML = '';
 
             data.rankings.forEach((entry) => {
                 const listItem = document.createElement('li');
@@ -601,7 +601,9 @@ function displayRankings() {
         })
         .catch(error => {
             console.error('랭킹 데이터를 가져오는 중 오류 발생:', error);
-            rankingBoard.innerHTML = '<p>랭킹 데이터를 불러올 수 없습니다.</p>';
+
++           // 여기도 rankingList 쪽에만 오류 표시 (원하는 대로 처리)
++           rankingList.innerHTML = '<li>랭킹 데이터를 불러올 수 없습니다.</li>';
         });
 }
 
