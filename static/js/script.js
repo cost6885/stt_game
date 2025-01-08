@@ -578,7 +578,7 @@ function displayRankings() {
     const rankingList = document.getElementById('ranking-list');
 
     // "로딩 중" 메시지를 rankingList에만 표시
-+   rankingList.innerHTML = '<li>로딩 중...</li>';
+    rankingList.innerHTML = '<li>로딩 중...</li>';
     rankingBoard.style.display = 'block';
 
     fetch('/get_rankings?timestamp=' + Date.now())
@@ -588,10 +588,8 @@ function displayRankings() {
                 throw new Error("No rankings available from server");
             }
 
-
-            // 굳이 rankingBoard 전체를 날리지 말고,
             // 이미 h3도 있고, ul도 있으니 ul만 비워주면 됨
-+           rankingList.innerHTML = '';
+            rankingList.innerHTML = '';
 
             data.rankings.forEach((entry) => {
                 const listItem = document.createElement('li');
@@ -602,10 +600,11 @@ function displayRankings() {
         .catch(error => {
             console.error('랭킹 데이터를 가져오는 중 오류 발생:', error);
 
-+           // 여기도 rankingList 쪽에만 오류 표시 (원하는 대로 처리)
-+           rankingList.innerHTML = '<li>랭킹 데이터를 불러올 수 없습니다.</li>';
+            // 여기도 rankingList 쪽에만 오류 표시
+            rankingList.innerHTML = '<li>랭킹 데이터를 불러올 수 없습니다.</li>';
         });
 }
+
 
 
 // DOMContentLoaded 이벤트가 발생했을 때 displayRankings 실행
