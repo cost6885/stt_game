@@ -613,11 +613,96 @@ function displayRankings() {
 }
 
 
+function rankmore() {
+    // 1) 새 팝업 창 열기
+    const popup = window.open("", "RankPopup", "width=600,height=800");
+    if (!popup) {
+        alert("팝업이 차단되었습니다. 팝업 차단을 해제해주세요!");
+        return;
+    }
+
+    // 2) 팝업 기본 HTML 구성
+    popup.document.write(`
+        <html>
+        <head>
+            <title>전체 랭킹</title>
+            <style>
+                body {
+                    font-family: 'Nanum Gothic', sans-serif;
+                    background-color: #f9f9f9;
+                    text-align: center;
+                    margin: 0;
+                    padding: 20px;
+                }
+                #popup-ranking-board {
+                    margin: 0 auto;
+                    padding: 20px;
+                    border-radius: 10px;
+                    background-color: rgba(255, 255, 0, 0.5);
+                    color: black;
+                    font-weight: bold;
+                    line-height: 1.6;
+                    width: 80%;
+                    max-width: 500px;
+                }
+                .rank-entry {
+                    margin: 10px 0;
+                }
+            </style>
+        </head>
+        <body>
+            <h2>🏆 전체 랭킹 🏆</h2>
+            <div id="popup-ranking-board">불러오는 중...</div>
+        </body>
+        </html>
+    `);
+
+    // 3) 팝업창의 문서 객체 참조
+    const popupDoc = popup.document;
+
+    // 4) /get_rankings (혹은 Google Apps Script)로 fetch
+    //    예: Flask 서버가 전체 랭킹을 JSON으로 반환한다고 가정
+    fetch('/get_rankings?all=true')
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('랭킹 데이터를 불러오지 못했습니다.');
+            }
+            return res.json();
+        })
+        .then(data => {
+            // data.rankings 배열이 전체 랭킹이라고 가정
+            const entireRankings = data.rankings || [];
+
+            // 5) popup DOM에 순회하며 삽입
+            const container = popupDoc.getElementById('popup-ranking-board');
+            container.innerHTML = ''; // "불러오는 중..." 지우기
+
+            entireRankings.forEach((entry, index) => {
+                const div = popupDoc.createElement('div');
+                div.className = 'rank-entry';
+                
+                // 순위, 이름, 점수 등을 원하는 형식으로 표시
+                div.textContent = `${index + 1}등: ${entry.name} (${entry.company}), 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
+                container.appendChild(div);
+            });
+        })
+        .catch(err => {
+            console.error(err);
+            const container = popupDoc.getElementById('popup-ranking-board');
+            container.innerHTML = `<p style="color:red;">오류 발생: ${err.message}</p>`;
+        });
+}
+
+
 
 
 // DOMContentLoaded 이벤트가 발생했을 때 displayRankings 실행
 document.addEventListener('DOMContentLoaded', () => {
-    displayRankings();
+    displayRankings(); // 기존에 랭킹을 불러오는 함수
+    const rankmoreBtn = document.getElementById('rankmore');
+    if (rankmoreBtn) {
+        rankmoreBtn.addEventListener('click', rankmore);
+    }
 });
 
 
