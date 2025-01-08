@@ -144,18 +144,33 @@ def save_to_sheet():
 @app.route('/get_rankings', methods=['GET'])
 def get_rankings():
     try:
-        timestamp = datetime.now().timestamp()
-        script_url = f"https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec?action=getRankings&timestamp={timestamp}"
-        response = requests.get(script_url)
+        # 1. 로컬 데이터 파일(ranking_data.json)에서 데이터 가져오기
+        local_file_path = "ranking_data.json"  # app.py와 같은 위치
+        with open(local_file_path, "r", encoding="utf-8") as file:
+            local_data = json.load(file)
+        print("Loaded rankings from local file")
+        return jsonify(local_data), 200
 
-        if response.status_code == 200:
-            return response.json(), 200
-        else:
-            print(f"Get rankings failed: {response.text}")
-            return jsonify({"error": "Failed to fetch rankings", "details": response.text}), 500
-    except Exception as e:
-        print(f"Error in get_rankings: {e}")
-        return jsonify({"error": str(e)}), 500
+    except Exception as local_error:
+        print(f"Error fetching rankings from local file: {local_error}")
+
+        # 2. Google Apps Script에서 데이터 가져오기 (우회)
+        try:
+            timestamp = datetime.now().timestamp()
+            script_url = f"https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec?action=getRankings&timestamp={timestamp}"
+            response = requests.get(script_url)
+
+            if response.status_code == 200:
+                print("Loaded rankings from Google Apps Script")
+                return response.json(), 200
+            else:
+                print(f"Get rankings failed: {response.text}")
+                return jsonify({"error": "Failed to fetch rankings", "details": response.text}), 500
+
+        except Exception as script_error:
+            print(f"Error fetching rankings from Google Apps Script: {script_error}")
+            return jsonify({"error": "Unable to fetch rankings from both sources", "details": str(script_error)}), 500
+
 
 
 
