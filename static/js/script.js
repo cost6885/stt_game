@@ -585,6 +585,10 @@ function displayRankings() {
     fetch(`/get_rankings?timestamp=${Date.now()}`)
         .then(response => response.json())
         .then(data => {
+            if (!data.rankings || data.rankings.length === 0) {
+                throw new Error("No rankings available");
+            }
+
             // 데이터를 성공적으로 가져오면 로딩 메시지를 지우고 랭킹 업데이트
             rankingBoard.innerHTML = ''; // 기존 로딩 메시지 제거
             rankingList.innerHTML = ''; // 기존 랭킹 제거
@@ -596,8 +600,31 @@ function displayRankings() {
             });
         })
         .catch(error => {
-            console.error('랭킹 데이터를 가져오는 중 오류 발생:', error);
-            rankingBoard.innerHTML = '<p>랭킹 데이터를 가져오는 중 오류가 발생했습니다.</p>';
+            console.warn('랭킹 데이터를 가져오는 중 오류 발생:', error);
+            rankingBoard.innerHTML = '<p>랭킹 데이터를 가져오는 중 오류가 발생했습니다. 스프레드시트 데이터로 우회합니다.</p>';
+
+            // 스프레드시트 데이터를 우회적으로 가져오는 로직
+            fetch('/spreadsheet_backup')
+                .then(response => response.json())
+                .then(backupData => {
+                    rankingBoard.innerHTML = ''; // 기존 오류 메시지 제거
+                    rankingList.innerHTML = ''; // 기존 랭킹 제거
+
+                    if (!backupData || backupData.length === 0) {
+                        rankingBoard.innerHTML = '<p>스프레드시트 데이터도 비어있습니다.</p>';
+                        return;
+                    }
+
+                    backupData.forEach((entry, index) => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `${index + 1}등: ${entry.name} (${entry.company}) - 점수: ${entry.score}`;
+                        rankingList.appendChild(listItem);
+                    });
+                })
+                .catch(backupError => {
+                    console.error('스프레드시트 데이터 가져오기 실패:', backupError);
+                    rankingBoard.innerHTML = '<p>랭킹 데이터를 불러올 수 없습니다.</p>';
+                });
         });
 }
 
@@ -621,6 +648,10 @@ function resetGame() {
     gameStatus.innerText = '';
     micStatus.innerText = '';
     micTestPassed = false;
+
+    // ★ 점수 이미지 숨기기
+    const scoreImageWrapper = document.getElementById('score-image-wrapper');
+    scoreImageWrapper.style.display = "none";
 
     document.getElementById('final-score').innerText = '0';
     document.getElementById('company').value = '';
