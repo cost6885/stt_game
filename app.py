@@ -123,17 +123,44 @@ def process():
 
 @app.route('/save_to_sheet', methods=['POST'])
 def save_to_sheet():
-    """Google Apps Script에 데이터를 저장하는 라우트"""
+    """Google Apps Script에 데이터를 저장 + local ranking_data.json 동기화"""
     try:
         data = request.get_json()
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
+        # 1) Apps Script로 POST
         response = fetch_from_google_script(payload=data)  # POST 요청
-        return jsonify(response), 200
+        # response는 JSON 형태를 반환한다고 가정
+
+        # 2) 구글 스크립트에 저장 성공 시, 다시 최신 랭킹 불러오기
+        if response and response.get("status") == "success":
+            # 최신 랭킹 데이터 가져오기
+            latest_rankings = fetch_from_google_script("?action=getRankings")
+            # latest_rankings는 { "rankings": [...] } 형태라고 가정
+
+            # 3) ranking_data.json 파일에 덮어쓰기
+            local_file_path = "ranking_data.json"
+            with open(local_file_path, "w", encoding="utf-8") as f:
+                json.dump(latest_rankings, f, ensure_ascii=False, indent=2)
+                # ensure_ascii=False 로 해야 한글이 깨지지 않고 저장
+                # indent=2 -> 보기 좋게 들여쓰기
+
+            return jsonify({
+                "status": "success",
+                "message": "Data saved successfully and local ranking_data.json updated!",
+                "rankingUpdate": latest_rankings
+            }), 200
+        else:
+            return jsonify({
+                "error": "Apps Script post failed or returned error",
+                "details": response
+            }), 500
+
     except Exception as e:
         print(f"Error in save_to_sheet: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 
 def fetch_from_google_script(endpoint: str = "", payload: dict = None):
