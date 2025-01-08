@@ -586,7 +586,7 @@ function displayRankings() {
     fetch(`https://nsdigitalt.click/get_rankings?timestamp=${Date.now()}`) // 도메인 URL로 변경
         .then(response => response.json())
         .then(data => {
-            if (!data.rankings || data.rankings.length === 0) {
+            if (data.status !== "success" || !data.rankings || data.rankings.length === 0) {
                 throw new Error("No rankings available from server");
             }
 
@@ -594,9 +594,9 @@ function displayRankings() {
             rankingBoard.innerHTML = ''; // 기존 로딩 메시지 제거
             rankingList.innerHTML = ''; // 기존 랭킹 제거
 
-            data.rankings.forEach((entry, index) => {
+            data.rankings.forEach((entry) => {
                 const listItem = document.createElement('li');
-                listItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
+                listItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score.toFixed(2)}, 참여: ${entry.participationCount}회`;
                 rankingList.appendChild(listItem);
             });
         })
@@ -607,7 +607,7 @@ function displayRankings() {
             fetch(`https://script.google.com/macros/s/AKfycbwqSCZ8MrM3F10BnuZEatniAkaOWlnBBPe8-KwbKg_f_EQ2NR0GnD_uRX_XmVn0fCaRzQ/exec`)
                 .then(response => response.json())
                 .then(backupData => {
-                    if (!backupData.rankings || backupData.rankings.length === 0) {
+                    if (backupData.status !== "success" || !backupData.rankings || backupData.rankings.length === 0) {
                         throw new Error("No rankings available from spreadsheet");
                     }
 
@@ -615,9 +615,9 @@ function displayRankings() {
                     rankingBoard.innerHTML = ''; // 기존 오류 메시지 제거
                     rankingList.innerHTML = ''; // 기존 랭킹 제거
 
-                    backupData.rankings.forEach((entry, index) => {
+                    backupData.rankings.forEach((entry) => {
                         const listItem = document.createElement('li');
-                        listItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
+                        listItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score.toFixed(2)}, 참여: ${entry.participationCount}회`;
                         rankingList.appendChild(listItem);
                     });
                 })
@@ -628,12 +628,11 @@ function displayRankings() {
         });
 }
 
-
-
-// 게임 시작 시 랭킹 보드 표시
+// DOMContentLoaded 이벤트가 발생했을 때 displayRankings 실행
 document.addEventListener('DOMContentLoaded', () => {
     displayRankings();
 });
+
 
 
 /** "다시하기" */
