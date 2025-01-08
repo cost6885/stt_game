@@ -173,6 +173,17 @@ def get_rankings():
 
 
 
+@app.route('/test_local_rankings', methods=['GET'])
+def test_local_rankings():
+    try:
+        local_file_path = "ranking_data.json"  # app.py와 같은 위치
+        with open(local_file_path, "r", encoding="utf-8") as file:
+            local_data = json.load(file)
+        print("Local file data:", local_data)  # 로드된 데이터 출력
+        return jsonify(local_data), 200
+    except Exception as e:
+        print(f"Error loading local file: {e}")  # 에러 로그 출력
+        return jsonify({"error": str(e)}), 500
 
 
 
