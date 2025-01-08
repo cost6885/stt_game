@@ -8,6 +8,9 @@ const totalRounds = 3;
 let countdownInterval;
 let micTestPassed = false;
 
+// 타이머 시작 시간 변수
+let gameStartTime;
+
 /** 이미 사용한 문장 리스트 */
 let usedSentences = []; 
 
@@ -173,6 +176,10 @@ function startGameSequence() {
         micStatus.innerText = "마이크 테스트를 통과해야 게임 시작 가능.";
         return;
     }
+
+    // 타이머 시작 시간 기록
+    gameStartTime = Date.now();
+    
     gameStartPage.style.display = 'flex';
     setTimeout(() => {
         gameStartPage.style.display = 'none';
@@ -182,6 +189,19 @@ function startGameSequence() {
         showPage(roundPage);
         startRound(currentRound);
     }, 2000);
+}
+
+
+/** 라운드를 진행했는지 확인 */
+function checkRoundsCompleted() {
+    return currentRound > 1 || totalScore > 0; // 라운드 진행 여부 판단
+}
+
+/** 부정행위 여부 판단 */
+function isCheating() {
+    const elapsedTime = Date.now() - gameStartTime; // 경과 시간 계산
+    const roundsCompleted = checkRoundsCompleted();
+    return !roundsCompleted || elapsedTime < 30000; // 라운드를 통과하지 않았거나 30초 미만인 경우
 }
 
 /** 라운드 시작 */
@@ -512,13 +532,21 @@ function sendToGoogleSheets() {
       return;
   }
 
-    let data = {
-        company,
-        employeeId,
-        name,
-        totalScore: totalScore.toFixed(2),
-        time: new Date().toISOString(), // 현재 시간을 ISO 형식으로 추가
-    };
+    // 부정행위 판별
+    if (isCheating()) {
+        alert("부정행위가 감지되었습니다. 게임을 다시 진행해주세요.");
+        console.warn("부정행위로 인해 제출이 중단되었습니다.");
+        prapare(); // 초기화 후 다시 시작
+        return;
+    }
+    
+  let data = {
+      company,
+      employeeId,
+      name,
+      totalScore: totalScore.toFixed(2),
+      time: new Date().toISOString(), // 현재 시간을 ISO 형식으로 추가
+  };
 
   // Flask (/save_to_sheet) or Node server or Apps Script URL에 맞게 변경
   fetch('/save_to_sheet', {
@@ -572,10 +600,6 @@ function displayRankings() {
             rankingBoard.innerHTML = '<p>랭킹 데이터를 가져오는 중 오류가 발생했습니다.</p>';
         });
 }
-
-
-
-
 
 
 
