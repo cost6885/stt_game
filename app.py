@@ -117,42 +117,79 @@ def process():
 
     return jsonify(response)
 
-# -----------------------------------------------------------------------------
-# ★ 추가된 부분: /save_to_sheet 라우트
-#  - 브라우저(script.js)에서 fetch('/save_to_sheet', {...}) 로 전송
-#  - Flask가 Google Apps Script 웹 앱에 POST → 시트 기록
-# -----------------------------------------------------------------------------
+
 @app.route('/save_to_sheet', methods=['POST'])
 def save_to_sheet():
     try:
-        # 1) 클라이언트에서 보내 준 JSON
         data = request.get_json()
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
-        # 2) Google Apps Script 웹 앱 URL
-        #    아래 URL은 예시이며, 실제 발급받은 exec URL로 교체
         script_url = "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec"
-
-        # 3) Flask -> Apps Script로 POST
-        #    requests 라이브러리 사용
         response = requests.post(script_url, json=data)
 
-        # 4) Apps Script 응답
         if response.status_code == 200:
-            # Apps Script에서 JSON을 반환한다고 가정
-            return response.text, 200
+            return response.json(), 200
         else:
-            return jsonify({
-                "error": "Apps Script returned error",
-                "details": response.text
-            }), response.status_code
-
+            return jsonify({"error": "Failed to save data"}), 500
     except Exception as e:
-        print(f"Error in save_to_sheet: {e}")
         return jsonify({"error": str(e)}), 500
 
-# -----------------------------------------------------------------------------
+
+@app.route('/get_rankings', methods=['GET'])
+def get_rankings():
+    try:
+        script_url = "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec?action=getRankings"
+        response = requests.get(script_url)
+
+        if response.status_code == 200:
+            return response.json(), 200
+        else:
+            return jsonify({"error": "Failed to fetch rankings"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+
+
+
+# # -----------------------------------------------------------------------------
+# # ★ 추가된 부분: /save_to_sheet 라우트
+# #  - 브라우저(script.js)에서 fetch('/save_to_sheet', {...}) 로 전송
+# #  - Flask가 Google Apps Script 웹 앱에 POST → 시트 기록
+# # -----------------------------------------------------------------------------
+# @app.route('/save_to_sheet', methods=['POST'])
+# def save_to_sheet():
+#     try:
+#         # 1) 클라이언트에서 보내 준 JSON
+#         data = request.get_json()
+#         if not data:
+#             return jsonify({"error": "No data provided"}), 400
+
+#         # 2) Google Apps Script 웹 앱 URL
+#         #    아래 URL은 예시이며, 실제 발급받은 exec URL로 교체
+#         script_url = "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec"
+
+#         # 3) Flask -> Apps Script로 POST
+#         #    requests 라이브러리 사용
+#         response = requests.post(script_url, json=data)
+
+#         # 4) Apps Script 응답
+#         if response.status_code == 200:
+#             # Apps Script에서 JSON을 반환한다고 가정
+#             return response.text, 200
+#         else:
+#             return jsonify({
+#                 "error": "Apps Script returned error",
+#                 "details": response.text
+#             }), response.status_code
+
+#     except Exception as e:
+#         print(f"Error in save_to_sheet: {e}")
+#         return jsonify({"error": str(e)}), 500
+
+# # -----------------------------------------------------------------------------
 
 if __name__ == '__main__':
     # 배포 환경에 따라 포트, debug 설정
