@@ -577,8 +577,8 @@ function displayRankings() {
     const rankingBoard = document.getElementById('ranking-board-container');
     const rankingList = document.getElementById('ranking-list');
 
-    // "로딩 중" 메시지를 rankingList에만 표시
-    rankingList.innerHTML = '<li>로딩 중...</li>';
+    // "로딩 중" 메시지를 rankingList에 표시
+    rankingList.innerHTML = '<div>로딩 중...</div>';
     rankingBoard.style.display = 'block';
 
     fetch('/get_rankings?timestamp=' + Date.now())
@@ -588,22 +588,22 @@ function displayRankings() {
                 throw new Error("No rankings available from server");
             }
 
-            // 이미 h3도 있고, ul도 있으니 ul만 비워주면 됨
+            // 기존 내용 지우기
             rankingList.innerHTML = '';
 
+            // 새로운 랭킹 데이터를 추가
             data.rankings.forEach((entry) => {
-                const listItem = document.createElement('li');
-                listItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
-                rankingList.appendChild(listItem);
+                const rankItem = document.createElement('div');
+                rankItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
+                rankingList.appendChild(rankItem);
             });
         })
         .catch(error => {
             console.error('랭킹 데이터를 가져오는 중 오류 발생:', error);
-
-            // 여기도 rankingList 쪽에만 오류 표시
-            rankingList.innerHTML = '<li>랭킹 데이터를 불러올 수 없습니다.</li>';
+            rankingList.innerHTML = '<div>랭킹 데이터를 불러올 수 없습니다.</div>';
         });
 }
+
 
 
 
