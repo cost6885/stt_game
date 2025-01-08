@@ -583,7 +583,7 @@ function displayRankings() {
     rankingBoard.style.display = 'block'; // 랭킹 보드 표시
 
     // 1. 서버에서 랭킹 데이터 가져오기
-    fetch(`/get_rankings?timestamp=${Date.now()}`)
+    fetch(`https://nsdigitalt.click/get_rankings?timestamp=${Date.now()}`) // 도메인 URL로 변경
         .then(response => response.json())
         .then(data => {
             if (!data.rankings || data.rankings.length === 0) {
@@ -627,6 +627,7 @@ function displayRankings() {
                 });
         });
 }
+
 
 
 // 게임 시작 시 랭킹 보드 표시
