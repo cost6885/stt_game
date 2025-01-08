@@ -19,6 +19,9 @@ app = Flask(__name__)
 # Load API Keys
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+if not OPENAI_API_KEY:
+    raise EnvironmentError("OpenAI API Key is not set. Please check your .env file.")
+
 # Set OpenAI API Key
 openai.api_key = OPENAI_API_KEY
 
@@ -131,23 +134,29 @@ def save_to_sheet():
         if response.status_code == 200:
             return response.json(), 200
         else:
-            return jsonify({"error": "Failed to save data"}), 500
+            print(f"Save to sheet failed: {response.text}")
+            return jsonify({"error": "Failed to save data", "details": response.text}), 500
     except Exception as e:
+        print(f"Error in save_to_sheet: {e}")
         return jsonify({"error": str(e)}), 500
 
 
 @app.route('/get_rankings', methods=['GET'])
 def get_rankings():
     try:
-        script_url = "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec?action=getRankings"
+        timestamp = datetime.now().timestamp()
+        script_url = f"https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec?action=getRankings&timestamp={timestamp}"
         response = requests.get(script_url)
 
         if response.status_code == 200:
             return response.json(), 200
         else:
-            return jsonify({"error": "Failed to fetch rankings"}), 500
+            print(f"Get rankings failed: {response.text}")
+            return jsonify({"error": "Failed to fetch rankings", "details": response.text}), 500
     except Exception as e:
+        print(f"Error in get_rankings: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 
 
