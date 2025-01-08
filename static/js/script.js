@@ -66,6 +66,10 @@ function updateNextRoundButtonLabel() {
 function showPage(page) {
     [landingPage, micTestPage, roundPage, roundFeedbackPage].forEach(p => p.classList.remove('active'));
     page.classList.add('active');
+    // ★ 랭킹 보드 업데이트
+    if (page === landingPage) {
+        displayRankings(); // 랜딩 페이지가 활성화될 때 랭킹 보드 업데이트
+    }
 }
 
 /** 폼 컨테이너 표시/숨김 */
@@ -464,15 +468,21 @@ function handleTranscriptionFail() {
     showRoundFeedback(lastReference, "", whisperScore, "");
 }
 
+
 /** 게임 종료 → formContainer로 이동하여 최종 점수 제출 */
 function endGame() {
     // ★ 점수 이미지 숨기기
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     scoreImageWrapper.style.display = "none";
-    
+
+    // 최종 점수를 표시
     document.getElementById('final-score').innerText = Math.floor(totalScore); // 소수점 제거
+
+    // 응모 폼 표시 (랭킹 보드는 숨김)
     showFormContainer();
 }
+
+
 
 /** Differences 하이라이팅 */
 function highlightDifferences(original, recognized) {
@@ -502,13 +512,13 @@ function sendToGoogleSheets() {
       return;
   }
 
-let data = {
-    company,
-    employeeId,
-    name,
-    totalScore: totalScore.toFixed(2),
-    time: new Date().toISOString(), // 현재 시간을 ISO 형식으로 추가
-};
+    let data = {
+        company,
+        employeeId,
+        name,
+        totalScore: totalScore.toFixed(2),
+        time: new Date().toISOString(), // 현재 시간을 ISO 형식으로 추가
+    };
 
   // Flask (/save_to_sheet) or Node server or Apps Script URL에 맞게 변경
   fetch('/save_to_sheet', {
@@ -533,6 +543,35 @@ let data = {
   });
 }
 
+
+
+/** 랭킹 보드 표시 함수 */
+function displayRankings() {
+    const rankingBoard = document.getElementById('ranking-board-container');
+    const rankingList = document.getElementById('ranking-list');
+    
+    // 로딩 메시지 표시
+    rankingBoard.innerHTML = '<p>로딩 중...</p>';
+    rankingBoard.style.display = 'block'; // 랭킹 보드 표시
+
+    fetch(`/get_rankings?timestamp=${Date.now()}`)
+        .then(response => response.json())
+        .then(data => {
+            // 데이터를 성공적으로 가져오면 로딩 메시지를 지우고 랭킹 업데이트
+            rankingBoard.innerHTML = ''; // 기존 로딩 메시지 제거
+            rankingList.innerHTML = ''; // 기존 랭킹 제거
+
+            data.rankings.forEach((entry, index) => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `${index + 1}등: ${entry.name} (${entry.company}) - 참여 ${entry.participationCount}회`;
+                rankingList.appendChild(listItem);
+            });
+        })
+        .catch(error => {
+            console.error('랭킹 데이터를 가져오는 중 오류 발생:', error);
+            rankingBoard.innerHTML = '<p>랭킹 데이터를 가져오는 중 오류가 발생했습니다.</p>';
+        });
+}
 
 
 
