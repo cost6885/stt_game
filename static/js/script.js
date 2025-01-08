@@ -628,6 +628,10 @@ function displayRankings() {
         });
 }
 
+// 게임 시작 시 랭킹 보드 표시
+document.addEventListener('DOMContentLoaded', () => {
+    displayRankings();
+});
 
 
 /** "다시하기" */
