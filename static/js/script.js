@@ -577,47 +577,47 @@ function sendToGoogleSheets() {
 function displayRankings() {
     const rankingBoard = document.getElementById('ranking-board-container');
     const rankingList = document.getElementById('ranking-list');
-    
+
     // 로딩 메시지 표시
     rankingBoard.innerHTML = '<p>로딩 중...</p>';
     rankingBoard.style.display = 'block'; // 랭킹 보드 표시
 
+    // 1. 서버에서 랭킹 데이터 가져오기
     fetch(`/get_rankings?timestamp=${Date.now()}`)
         .then(response => response.json())
         .then(data => {
             if (!data.rankings || data.rankings.length === 0) {
-                throw new Error("No rankings available");
+                throw new Error("No rankings available from server");
             }
 
-            // 데이터를 성공적으로 가져오면 로딩 메시지를 지우고 랭킹 업데이트
+            // 서버 데이터로 랭킹 표시
             rankingBoard.innerHTML = ''; // 기존 로딩 메시지 제거
             rankingList.innerHTML = ''; // 기존 랭킹 제거
 
             data.rankings.forEach((entry, index) => {
                 const listItem = document.createElement('li');
-                listItem.textContent = `${index + 1}등: ${entry.name} (${entry.company}) - 참여 ${entry.participationCount}회`;
+                listItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
                 rankingList.appendChild(listItem);
             });
         })
-        .catch(error => {
-            console.warn('랭킹 데이터를 가져오는 중 오류 발생:', error);
-            rankingBoard.innerHTML = '<p>랭킹 데이터를 가져오는 중 오류가 발생했습니다. 스프레드시트 데이터로 우회합니다.</p>';
+        .catch(serverError => {
+            console.warn('서버 랭킹 데이터를 가져오는 중 오류 발생:', serverError);
 
-            // 스프레드시트 데이터를 우회적으로 가져오는 로직
-            fetch('/spreadsheet_backup')
+            // 2. 스프레드시트 데이터로 우회
+            fetch(`https://script.google.com/macros/s/AKfycbwqSCZ8MrM3F10BnuZEatniAkaOWlnBBPe8-KwbKg_f_EQ2NR0GnD_uRX_XmVn0fCaRzQ/exec`)
                 .then(response => response.json())
                 .then(backupData => {
+                    if (!backupData.rankings || backupData.rankings.length === 0) {
+                        throw new Error("No rankings available from spreadsheet");
+                    }
+
+                    // 스프레드시트 데이터로 랭킹 표시
                     rankingBoard.innerHTML = ''; // 기존 오류 메시지 제거
                     rankingList.innerHTML = ''; // 기존 랭킹 제거
 
-                    if (!backupData || backupData.length === 0) {
-                        rankingBoard.innerHTML = '<p>스프레드시트 데이터도 비어있습니다.</p>';
-                        return;
-                    }
-
-                    backupData.forEach((entry, index) => {
+                    backupData.rankings.forEach((entry, index) => {
                         const listItem = document.createElement('li');
-                        listItem.textContent = `${index + 1}등: ${entry.name} (${entry.company}) - 점수: ${entry.score}`;
+                        listItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
                         rankingList.appendChild(listItem);
                     });
                 })
@@ -627,6 +627,7 @@ function displayRankings() {
                 });
         });
 }
+
 
 // 게임 시작 시 랭킹 보드 표시
 document.addEventListener('DOMContentLoaded', () => {
