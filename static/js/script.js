@@ -416,7 +416,13 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
     scoreFeedbackTextEl.textContent = `${feedbackText} ( ${score.toFixed(2)}% )`;
     
     // ★ 추가: 버튼 이름 업데이트
-    updateNextRoundButtonLabel();    
+    if (score === 0) {
+        nextRoundBtn.textContent = "다시하기";
+        nextRoundBtn.onclick = prapare; // "다시하기" 클릭 시 초기화
+    } else {
+        updateNextRoundButtonLabel(); // 기존 로직 유지
+        nextRoundBtn.onclick = handleNextRound; // 다음 라운드로 이동
+    }    
     
     // ★ 추가: 점수별 이미지 표시
     const scoreImageFile = getScoreImage(score);
@@ -433,11 +439,11 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
     }
 }
 
-/** "다음 라운드" or "결과보기" 버튼 */
-nextRoundBtn.addEventListener('click', () => {
+/** "다음 라운드" 처리 */
+function handleNextRound() {
     roundFeedbackPage.classList.remove('active');
 
-    // ★ 점수 이미지 숨기기
+    // 점수 이미지 숨기기
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     scoreImageWrapper.style.display = "none";
     
@@ -448,7 +454,8 @@ nextRoundBtn.addEventListener('click', () => {
         showPage(roundPage);
         startRound(currentRound);
     }
-});
+}
+
 
 /** 오류 발생 시 0점 처리 & 피드백 페이지 표시 (원문=lastReference, 인식="", 점수=0) */
 function handleTranscriptionFail() {
@@ -463,7 +470,7 @@ function endGame() {
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     scoreImageWrapper.style.display = "none";
     
-    document.getElementById('final-score').innerText = totalScore.toFixed(2);
+    document.getElementById('final-score').innerText = Math.floor(totalScore); // 소수점 제거
     showFormContainer();
 }
 
@@ -525,6 +532,9 @@ let data = {
       console.error("Node fetch 오류:", error);
   });
 }
+
+
+
 
 
 
