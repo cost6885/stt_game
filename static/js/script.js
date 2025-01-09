@@ -587,17 +587,17 @@ function sendToGoogleSheets() {
 
         // sheetData, localData 내 status 확인
         if (sheetData.status === "success" && localData.status === "success") {
-            alert("응모 완료! (Google 시트 + 로컬 JSON 병렬 저장)");
+            alert("응모 완료!");
             // 맨 처음 게임 시작화면으로
             prapare();
         } else {
-            alert("저장 중 일부 에러 발생. 콘솔을 확인하세요.");
+            alert("저장 중 일부 에러 발생");
             console.warn("sheetData:", sheetData, "localData:", localData);
         }
     })
     .catch(error => {
-        console.error("병렬 저장 오류:", error);
-        alert("병렬 저장 중 오류 발생. 콘솔 확인 바람.");
+        console.error("저장 오류:", error);
+        alert("저장 중 오류 발생");
     });
 }
 
