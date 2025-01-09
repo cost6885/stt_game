@@ -717,6 +717,8 @@ function rankmore() {
                 }
                 .rank-entry {
                     margin: 10px 0;
+                    font-size: 16px;
+                    text-align: left;
                 }
             </style>
         </head>
@@ -731,7 +733,6 @@ function rankmore() {
     const popupDoc = popup.document;
 
     // 4) /get_rankings (혹은 Google Apps Script)로 fetch
-    //    예: Flask 서버가 전체 랭킹을 JSON으로 반환한다고 가정
     fetch('/get_rankings?all=true')
         .then(res => {
             if (!res.ok) {
@@ -740,19 +741,73 @@ function rankmore() {
             return res.json();
         })
         .then(data => {
-            // data.rankings 배열이 전체 랭킹이라고 가정
-            const entireRankings = data.rankings || [];
+            let entireRankings = data.rankings || [];
 
-            // 5) popup DOM에 순회하며 삽입
+            // (1) 부정행위자 제외
+            entireRankings = entireRankings.filter(entry => entry.status !== "부정행위");
+            if (entireRankings.length === 0) {
+                throw new Error("No valid (non-cheater) rankings available");
+            }
+
+            // (2) 정렬
+            //   1) participationCount 내림차순
+            //   2) responseTime 오름차순 (빠른 시간 우선)
+            //   3) score 내림차순
+            entireRankings.sort((a, b) => {
+                // 참여 횟수: desc
+                if (b.participationCount !== a.participationCount) {
+                    return b.participationCount - a.participationCount;
+                }
+                // 응답시간: asc
+                const aTime = new Date(a.responseTime).getTime();
+                const bTime = new Date(b.responseTime).getTime();
+                if (aTime !== bTime) {
+                    return aTime - bTime;
+                }
+                // 점수: desc
+                return b.score - a.score;
+            });
+
+            // (3) 표시할 DOM
             const container = popupDoc.getElementById('popup-ranking-board');
             container.innerHTML = ''; // "불러오는 중..." 지우기
 
+            // (4) 순회하며 HTML 생성
             entireRankings.forEach((entry, index) => {
                 const div = popupDoc.createElement('div');
                 div.className = 'rank-entry';
-                
-                // 순위, 이름, 점수 등을 원하는 형식으로 표시
-                div.textContent = `${index + 1}등: ${entry.name} (${entry.company}), 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
+
+                // 기본 텍스트
+                const rankText = `${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
+
+                // 1등/2등/3등/그 외 디자인
+                if (index === 0) {
+                    // 1등 → 진한 검정색
+                    div.innerHTML = `
+                        <span style="font-weight:bold; color: rgba(0, 0, 0, 1);">
+                            1등🥇 ${rankText}
+                        </span>`;
+                } else if (index === 1) {
+                    // 2등 → 좀 더 밝은 검정
+                    div.innerHTML = `
+                        <span style="font-weight:bold; color: rgba(0, 0, 0, 0.8);">
+                            2등🥈 ${rankText}
+                        </span>`;
+                } else if (index === 2) {
+                    // 3등 → 좀 더 밝은 검정
+                    div.innerHTML = `
+                        <span style="font-weight:bold; color: rgba(0, 0, 0, 0.6);">
+                            3등🥉 ${rankText}
+                        </span>`;
+                } else {
+                    // 4등~
+                    const alpha = Math.max(0.4, 1 - index * 0.1);
+                    div.innerHTML = `
+                        <span style="color: rgba(0, 0, 0, ${alpha});">
+                            ${index + 1}등🙄 ${rankText}
+                        </span>`;
+                }
+
                 container.appendChild(div);
             });
         })
@@ -762,6 +817,7 @@ function rankmore() {
             container.innerHTML = `<p style="color:red;">오류 발생: ${err.message}</p>`;
         });
 }
+
 
 
 
