@@ -171,8 +171,8 @@ function sendAudioForTest(audioData, referenceSentence) {
             micStatus.innerText = `말을 하셨나요? 점수: ${Math.round(scores.Whisper)}`;
             micTestPassed = false;
             // (테스트 편의를 위해 자동 우회)
-            micTestPassed = true;
-            startGameSequence();
+            // micTestPassed = true;
+            // startGameSequence();
         }
     })
     .catch(error => {
