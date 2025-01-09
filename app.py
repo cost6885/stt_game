@@ -1,13 +1,14 @@
 import os
 import json
 import random
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 from dotenv import load_dotenv
 import openai
 from difflib import SequenceMatcher
 from datetime import datetime
 import base64
 import uuid
+import time  # time.time() 사용
 
 # 추가: requests 라이브러리
 import requests
@@ -15,14 +16,12 @@ import requests
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = "ANY_RANDOM_SECRET_KEY_FOR_SESSION"  # 세션을 사용하려면 반드시 secret_key 설정 (임의 문자열)
 
 # Load API Keys
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
 if not OPENAI_API_KEY:
     raise EnvironmentError("OpenAI API Key is not set. Please check your .env file.")
-
-# Set OpenAI API Key
 openai.api_key = OPENAI_API_KEY
 
 # Load sentences
@@ -47,16 +46,34 @@ def transcribe_with_whisper(audio_path):
                 model="whisper-1",
                 file=audio_file
             )
-        # transcript는 dict 형태를 반환한다고 가정
-        return transcript.get("text", "")
+        return transcript.get("text", "")  # dict 형태에서 text 키 추출
     except Exception as e:
         print(f"Whisper API Error: {e}")
         return None
+
 
 @app.route('/')
 def index():
     test_sentence = generate_sentence(test_sentences)
     return render_template('index.html', test_sentence=test_sentence)
+
+
+# -----------------------------------------
+#  게임 시작 시각 기록 → 세션에 저장
+# -----------------------------------------
+@app.route('/start_game', methods=['POST'])
+def start_game():
+    """
+    부정행위 방지를 위해 게임 시작 시각을 세션에 기록.
+    프론트엔드에서 게임 시작할 때 호출 (예: 마이크 테스트 통과 직후)
+    """
+    session["game_start_time"] = time.time()  # 현재 유닉스 타임스탬프(초 단위)
+    return jsonify({
+        "status": "ok",
+        "message": "Game started",
+        "serverTime": session["game_start_time"]
+    })
+
 
 @app.route('/get_game_sentence', methods=['GET'])
 def get_game_sentence():
@@ -64,6 +81,7 @@ def get_game_sentence():
     if not game_sentence:
         return jsonify({"error": "No game sentences available"}), 500
     return jsonify({"game_sentence": game_sentence})
+
 
 @app.route('/process', methods=['POST'])
 def process():
@@ -102,7 +120,7 @@ def process():
         "Whisper": whisper_score
     }
 
-    # 점수 등급
+    # 점수 등급 (참고)
     difficulty = ""
     if whisper_score > 90:
         difficulty = "초급"
@@ -114,85 +132,141 @@ def process():
     response = {
         "scores": scores,
         "difficulty": difficulty,
-        "stt_text": whisper_text,  # 인식된 텍스트도 함께 반환
-        "audio_path": f"/static/audio/{audio_filename}"  # 클라이언트에서 재생 가능하도록
+        "stt_text": whisper_text,
+        "audio_path": f"/static/audio/{audio_filename}"
     }
-
     return jsonify(response)
 
 
+# -----------------------------------------
+#  부정행위(시간) 체크 함수
+# -----------------------------------------
+def check_cheating_time(threshold=30):
+    """
+    세션에 저장된 game_start_time과 현재 시각을 비교해서
+    threshold 초(기본 30초) 미만이면 부정행위로 간주.
+    """
+    if "game_start_time" not in session:
+        # 아예 시작점이 없다면 게임을 시작하지 않았다고 간주
+        return True, "No game session found."
+    start_time = session["game_start_time"]
+    elapsed = time.time() - start_time
+    if elapsed < threshold:
+        return True, f"부정행위 감지: 플레이 경과 {elapsed:.2f}초 (기준 {threshold}초)"
+    return False, None
+
+
+# -----------------------------------------
+#  /save_to_sheet : 구글 시트 기록
+# -----------------------------------------
 @app.route('/save_to_sheet', methods=['POST'])
 def save_to_sheet():
-    """Google Apps Script에 데이터를 저장하는 라우트"""
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
+    # 1) 체크
+    is_cheat, reason = check_cheating_time(threshold=30)
 
-        response = fetch_from_google_script(payload=data)  # POST 요청
+    # 2) 요청 데이터 파싱
+    data = request.get_json() or {}
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    # 3) 부정행위 여부에 따라 status 필드
+    if is_cheat:
+        data["status"] = "부정행위"
+    else:
+        data["status"] = "정상"
+
+    # 4) 구글 Apps Script로 POST
+    try:
+        response = fetch_from_google_script(payload=data)
         return jsonify(response), 200
     except Exception as e:
         print(f"Error in save_to_sheet: {e}")
         return jsonify({"error": str(e)}), 500
 
 
+# -----------------------------------------
+#  /save_to_local : ranking_data.json 기록
+# -----------------------------------------
 @app.route('/save_to_local', methods=['POST'])
 def save_to_local():
-    """
-    1) 클라이언트에서 보내 준 JSON을 받아 
-    2) ranking_data.json에 추가(또는 갱신) 저장
-    3) JSON 응답 반환
-    """
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"status": "error", "message": "No data provided"}), 400
+    # 1) 체크
+    is_cheat, reason = check_cheating_time(threshold=30)
 
-        # (예시) 기존 ranking_data.json 로드
+    data = request.get_json() or {}
+    if not data:
+        return jsonify({"status": "error", "message": "No data provided"}), 400
+
+    # 2) 부정행위 여부
+    if is_cheat:
+        data["status"] = "부정행위"
+    else:
+        data["status"] = "정상"
+
+    try:
+        company = data.get("company", "")
+        employeeId = data.get("employeeId", "")
+        name = data.get("name", "")
+        newScore = float(data.get("totalScore", 0.0))
+
         local_file_path = "ranking_data.json"
         try:
             with open(local_file_path, "r", encoding="utf-8") as f:
-                local_data = json.load(f)
+                local_data = json.load(f)  # { "rankings": [...] }
         except FileNotFoundError:
-            # 파일이 아예 없으면 초기 구조 생성
             local_data = { "rankings": [] }
 
-        # local_data는 { "rankings": [...] } 형태라 가정
-        # 만약 다른 구조라면, 추가 로직으로 맞춰주어야 함
         if "rankings" not in local_data:
             local_data["rankings"] = []
 
-        # 예: 구글 시트에 보내는 데이터와 동일하게 company, employeeId, name, totalScore, time 등
-        #     응답시간(new Date().toLocaleString()) 등은 Python 쪽에서 생성 가능
-        new_entry = {
-            "rank": 0,  # 임시(실제 순위는 /get_rankings 시점에 재계산 가능)
-            "company": data.get("company", ""),
-            "employeeId": data.get("employeeId", ""),
-            "name": data.get("name", ""),
-            "score": float(data.get("totalScore", 0.0)),
-            "participationCount": 1,  # 임시(원하면 로직으로 중복 계산)
-            "responseTime": datetime.now().strftime("%Y.%m.%d %p %I:%M:%S")  
-        }
+        existingEntry = None
+        for entry in local_data["rankings"]:
+            # 회사 + 사번으로 식별
+            if entry.get("company") == company and entry.get("employeeId") == employeeId:
+                existingEntry = entry
+                break
 
-        # rankings 배열에 푸시
-        local_data["rankings"].append(new_entry)
+        currentTimeStr = datetime.now().strftime("%Y. M. d %p %I:%M:%S")  # 예: 2025. 1. 7 오후 5:53:38
 
-        # 파일에 다시 저장(덮어쓰기)
+        if existingEntry:
+            oldScore = float(existingEntry.get("score", 0.0))
+            existingEntry["score"] = max(oldScore, newScore)
+            existingEntry["participationCount"] = existingEntry.get("participationCount", 1) + 1
+            existingEntry["responseTime"] = currentTimeStr
+            existingEntry["name"] = name
+            existingEntry["status"] = data["status"]  # 부정행위 여부 반영
+        else:
+            newEntry = {
+                "rank": 0,
+                "company": company,
+                "employeeId": employeeId,
+                "name": name,
+                "score": newScore,
+                "participationCount": 1,
+                "responseTime": currentTimeStr,
+                "status": data["status"]  # "부정행위" or "정상"
+            }
+            local_data["rankings"].append(newEntry)
+
         with open(local_file_path, "w", encoding="utf-8") as f:
             json.dump(local_data, f, ensure_ascii=False, indent=2)
 
-        return jsonify({"status": "success", "message": "Data saved to local ranking_data.json"}), 200
+        return jsonify({
+            "status": "success",
+            "message": "Data saved/updated to local ranking_data.json",
+            "cheatInfo": reason if is_cheat else ""
+        }), 200
 
     except Exception as e:
         print(f"Error in save_to_local: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-
-
 def fetch_from_google_script(endpoint: str = "", payload: dict = None):
     try:
-        script_url = "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec" + endpoint
+        script_url = (
+            "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec"
+            + endpoint
+        )
         if payload:
             response = requests.post(script_url, json=payload)
         else:
@@ -206,79 +280,34 @@ def fetch_from_google_script(endpoint: str = "", payload: dict = None):
         raise Exception(f"Error communicating with Google Apps Script: {e}")
 
 
-
 @app.route('/get_rankings', methods=['GET'])
 def get_rankings():
     try:
-        # 1. 로컬 데이터 파일(ranking_data.json)에서 데이터 가져오기
         local_file_path = "ranking_data.json"
         with open(local_file_path, "r", encoding="utf-8") as file:
             local_data = json.load(file)
         return jsonify(local_data), 200
-
     except Exception as local_error:
         print(f"Local file error: {local_error}")
-        # 2. Google Apps Script에서 데이터 가져오기
+        # 로컬 파일 실패하면 → Google Apps Script에서 불러오기
         try:
             return jsonify(fetch_from_google_script("?action=getRankings")), 200
         except Exception as script_error:
             return jsonify({"error": str(script_error)}), 500
 
 
-
 @app.route('/test_local_rankings', methods=['GET'])
 def test_local_rankings():
     try:
-        local_file_path = "ranking_data.json"  # app.py와 같은 위치
+        local_file_path = "ranking_data.json"
         with open(local_file_path, "r", encoding="utf-8") as file:
             local_data = json.load(file)
-        print("Local file data:", local_data)  # 로드된 데이터 출력
+        print("Local file data:", local_data)
         return jsonify(local_data), 200
     except Exception as e:
-        print(f"Error loading local file: {e}")  # 에러 로그 출력
+        print(f"Error loading local file: {e}")
         return jsonify({"error": str(e)}), 500
 
 
-
-
-
-# # -----------------------------------------------------------------------------
-# # ★ 추가된 부분: /save_to_sheet 라우트
-# #  - 브라우저(script.js)에서 fetch('/save_to_sheet', {...}) 로 전송
-# #  - Flask가 Google Apps Script 웹 앱에 POST → 시트 기록
-# # -----------------------------------------------------------------------------
-# @app.route('/save_to_sheet', methods=['POST'])
-# def save_to_sheet():
-#     try:
-#         # 1) 클라이언트에서 보내 준 JSON
-#         data = request.get_json()
-#         if not data:
-#             return jsonify({"error": "No data provided"}), 400
-
-#         # 2) Google Apps Script 웹 앱 URL
-#         #    아래 URL은 예시이며, 실제 발급받은 exec URL로 교체
-#         script_url = "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec"
-
-#         # 3) Flask -> Apps Script로 POST
-#         #    requests 라이브러리 사용
-#         response = requests.post(script_url, json=data)
-
-#         # 4) Apps Script 응답
-#         if response.status_code == 200:
-#             # Apps Script에서 JSON을 반환한다고 가정
-#             return response.text, 200
-#         else:
-#             return jsonify({
-#                 "error": "Apps Script returned error",
-#                 "details": response.text
-#             }), response.status_code
-
-#     except Exception as e:
-#         print(f"Error in save_to_sheet: {e}")
-#         return jsonify({"error": str(e)}), 500
-
-# # -----------------------------------------------------------------------------
-
 if __name__ == '__main__':
-    # 배포 환경에 따라 포트, debug 설정
     app.run(host='0.0.0.0', port=5000, debug=os.getenv('FLASK_ENV') == 'development')
