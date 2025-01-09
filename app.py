@@ -159,17 +159,25 @@ def process():
     total_score = (0.7 * whisper_score) + (0.2 * avg_pitch / 300) + (0.1 * avg_volume / 0.1)
     total_score = min(max(total_score, 0), 100)  # 점수는 0~100 사이로 제한
 
+    # ★ 세션에 round_scores 배열이 없다면 초기화
+    if "round_scores" not in session:
+        session["round_scores"] = []
+
+    # ★ 이번 라운드 점수를 세션에 추가
+    session["round_scores"].append(total_score)
+
     response = {
         "scores": {
             "Whisper": whisper_score,
             "Pitch": avg_pitch,
             "Volume": avg_volume,
-            "Total": total_score
+            "RoundScore": total_score  # ← 'Total' 대신 'RoundScore' 등 명시적으로 바꿔도 OK
         },
         "stt_text": whisper_text,
         "audio_path": f"/static/audio/{audio_filename}"
     }
     return jsonify(response)
+
 
 
 
@@ -344,6 +352,29 @@ def test_local_rankings():
         return jsonify({"error": str(e)}), 500
 
 
+
+# -----------------------------------------
+#  /finish_game : 최종 점수(평균 등) 계산 후 반환
+# -----------------------------------------
+@app.route('/finish_game', methods=['POST'])
+def finish_game():
+    # 세션에 round_scores가 있는지 체크
+    if "round_scores" not in session or len(session["round_scores"]) == 0:
+        return jsonify({"error": "No round scores found."}), 400
+
+    # 라운드별 점수 평균 (예: 3라운드)
+    round_scores = session["round_scores"]
+    avg_score = sum(round_scores) / len(round_scores)
+    final_score = round(avg_score)
+
+    # 필요하다면 여기서 게임 플레이 끝났다고 세션 초기화 가능
+    # session.pop("round_scores", None)
+    # session.pop("game_start_time", None)
+
+    return jsonify({
+        "status": "ok",
+        "final_score": final_score
+    })
 
 
 
