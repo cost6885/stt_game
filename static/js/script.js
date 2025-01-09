@@ -3,10 +3,14 @@
 let mediaRecorder;
 let audioChunks = [];
 let currentRound = 1;
-let totalScore = 0;
+
 const totalRounds = 3;
 let countdownInterval;
 let micTestPassed = false;
+
+// let totalScore = 0;
+// 대신 라운드별 점수를 담을 배열 추가
+let roundScores = [];
 
 // 타이머 시작 시간 변수
 let gameStartTime;
@@ -365,40 +369,42 @@ function stopRecording() {
 }
 
 /** STT 처리 */
+// --- sendAudio() 내부 ---
 function sendAudio(audioData, referenceSentence) {
-    fetch('/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            audio: audioData,
-            reference: referenceSentence
-        })
-    })
+  fetch('/process', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ audio: audioData, reference: referenceSentence })
+  })
     .then(response => response.json())
     .then(data => {
-        if (data.error) {
-            console.error('STT 변환 실패:', data.error);
-            handleTranscriptionFail();
-            return;
-        }
-        const { scores, stt_text, audio_path } = data;
-        if (!scores || typeof scores.Total !== 'number' || !stt_text) {
-            console.warn('STT 결과 데이터 이상');
-            handleTranscriptionFail();
-            return;
-        }
+      if (data.error) {
+        console.error('STT 변환 실패:', data.error);
+        handleTranscriptionFail();
+        return;
+      }
+      const { scores, stt_text, audio_path } = data;
+      if (!scores || typeof scores.Total !== 'number' || !stt_text) {
+        console.warn('STT 결과 데이터 이상');
+        handleTranscriptionFail();
+        return;
+      }
 
-        totalScore += scores.Total;  // 누적 점수에 Total 사용
-        console.log(`라운드 ${currentRound} 누적 점수: ${Math.round(totalScore)}점`);
+      // *기존: totalScore += scores.Total; -> 삭제*
+      // 대신 해당 라운드 점수를 배열에 저장
+      roundScores.push(scores.Total);
 
-        // 라운드 피드백
-        showRoundFeedback(referenceSentence, stt_text, scores.Total, audio_path); // Total 전달
+      console.log(`라운드 ${currentRound} 점수: ${Math.round(scores.Total)}점 (누적 아님)`);
+
+      // 라운드 피드백
+      showRoundFeedback(referenceSentence, stt_text, scores.Total, audio_path);
     })
     .catch(error => {
-        console.error('STT 변환 오류:', error);
-        handleTranscriptionFail();
+      console.error('STT 변환 오류:', error);
+      handleTranscriptionFail();
     });
 }
+
 
 
 
@@ -424,8 +430,9 @@ function getScoreImage(score) {
 }
 
 
+
 /** 라운드 피드백 표시 */
-function showRoundFeedback(reference, recognized, totalScore, audioPath) {
+function showRoundFeedback(reference, recognized, roundScore, audioPath) {
     // 라운드 페이지 숨기고 피드백 페이지 활성화
     roundPage.classList.remove('active');
     roundFeedbackPage.classList.add('active');
@@ -434,24 +441,27 @@ function showRoundFeedback(reference, recognized, totalScore, audioPath) {
     recordedAudioEl.src = audioPath || "";        
     recordedAudioEl.load();
 
+    // 원문 / STT 결과 표시
     originalTextEl.innerHTML = reference;
     recognizedTextEl.innerHTML = highlightDifferences(reference, recognized);
 
     // 점수 등급에 따른 클래스와 텍스트 설정
     let feedbackClass = "bad";
     let feedbackText = "BAD";
-    if (totalScore > 90) {
+    if (roundScore > 90) {
         feedbackClass = "good";
         feedbackText = "GOOD";
-    } else if (totalScore > 70) {
+    } else if (roundScore > 70) {
         feedbackClass = "normal";
         feedbackText = "NORMAL";
     }
+    
+    // 점수 표시
     scoreFeedbackTextEl.className = "score-feedback " + feedbackClass;
-    scoreFeedbackTextEl.textContent = `${feedbackText} ( ${Math.round(totalScore)}% )`;
+    scoreFeedbackTextEl.textContent = `${feedbackText} ( ${Math.round(roundScore)}% )`;
 
     // ★ 추가: 버튼 이름 업데이트
-    if (totalScore === 0) {
+    if (roundScore === 0) {
         nextRoundBtn.textContent = "다시하기";
         nextRoundBtn.onclick = prapare; // "다시하기" 클릭 시 초기화
     } else {
@@ -460,7 +470,7 @@ function showRoundFeedback(reference, recognized, totalScore, audioPath) {
     }    
 
     // ★ 추가: 점수별 이미지 표시
-    const scoreImageFile = getScoreImage(totalScore);
+    const scoreImageFile = getScoreImage(roundScore);
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     if (scoreImageFile) {
         // 경로: /static/images/<파일명>
@@ -473,6 +483,7 @@ function showRoundFeedback(reference, recognized, totalScore, audioPath) {
         scoreImageWrapper.style.display = "none";
     }
 }
+
 
 
 /** "다음 라운드" 처리 */
@@ -509,8 +520,15 @@ function endGame() {
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     scoreImageWrapper.style.display = "none";
 
-    // 최종 점수를 표시
-    document.getElementById('final-score').innerText = Math.round(totalScore);
+    // 평균 계산
+    const sum = roundScores.reduce((acc, cur) => acc + cur, 0);
+    const avg = sum / roundScores.length;
+
+    // 최종 점수: 평균값
+    const finalScore = Math.round(avg);
+
+    // 화면에 표시
+    document.getElementById('final-score').innerText = finalScore;
 
     // 응모 폼 표시 (랭킹 보드는 숨김)
     showFormContainer();
@@ -546,6 +564,12 @@ function sendToGoogleSheets() {
         return;
     }
 
+
+    // 평균점수 구하기
+    const sum = roundScores.reduce((acc, cur) => acc + cur, 0);
+    const avg = sum / roundScores.length;
+    const finalScore = Math.round(avg);
+    
     // 부정행위 판별
     if (isCheating()) {
         alert("부정행위가 감지되었습니다. 게임을 다시 진행해주세요.");
@@ -558,7 +582,7 @@ function sendToGoogleSheets() {
         company,
         employeeId,
         name,
-        totalScore: Math.round(totalScore), // 소수점 없이 정수로 전송
+        totalScore: finalScore,  // ★ 여기서 평균 사용
         time: new Date().toISOString()
     };
 
