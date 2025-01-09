@@ -644,19 +644,24 @@ function displayRankings() {
                 const rankItem = document.createElement('div');
 
                 // 표시할 텍스트
-                const rankText = `${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
+                const rankText = `${entry.name} (${entry.company}) - 최고점수: ${entry.score}, 참여: ${entry.participationCount}회`;
 
                 // 1등, 2등, 3등, 그 외 구분
                 if (index === 0) {
-                    rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: gold;">1등🥇 ${rankText}</span>`;
+                    // 1등 - 가장 진한 검정색
+                    rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: rgba(0, 0, 0, 1);">1등🥇 ${rankText}</span>`;
                 } else if (index === 1) {
-                    rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: silver;">2등🥈 ${rankText}</span>`;
+                    // 2등 - 약간 밝은 색
+                    rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: rgba(0, 0, 0, 0.8);">2등🥈 ${rankText}</span>`;
                 } else if (index === 2) {
-                    rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: bronze;">3등🥉 ${rankText}</span>`;
+                    // 3등 - 더 밝은 색
+                    rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: rgba(0, 0, 0, 0.6);">3등🥉 ${rankText}</span>`;
                 } else {
-                    rankItem.innerHTML = `<span class="name">${index + 1}등🙄 ${rankText}</span>`;
+                    // 나머지 등수 - 점점 흐려짐
+                    const alpha = Math.max(0.4, 1 - index * 0.1); // 등수가 내려갈수록 투명도 증가, 최소 0.4
+                    rankItem.innerHTML = `<span class="name" style="color: rgba(0, 0, 0, ${alpha});">${index + 1}등🙄 ${rankText}</span>`;
                 }
-
+                
                 rankingList.appendChild(rankItem);
             });
 
