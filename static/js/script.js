@@ -531,14 +531,14 @@ function highlightDifferences(original, recognized) {
 }
 
 function sendToGoogleSheets() {
-  let company = document.getElementById('company').value.trim();
-  let employeeId = document.getElementById('employeeId').value.trim();
-  let name = document.getElementById('name').value.trim();
+    let company = document.getElementById('company').value.trim();
+    let employeeId = document.getElementById('employeeId').value.trim();
+    let name = document.getElementById('name').value.trim();
 
-  if (!company || !employeeId || !name) {
-      console.warn("모든 정보를 입력해주세요!");
-      return;
-  }
+    if (!company || !employeeId || !name) {
+        console.warn("모든 정보를 입력해주세요!");
+        return;
+    }
 
     // 부정행위 판별
     if (isCheating()) {
@@ -547,36 +547,51 @@ function sendToGoogleSheets() {
         prapare(); // 초기화 후 다시 시작
         return;
     }
-    
-  let data = {
-      company,
-      employeeId,
-      name,
-      totalScore: totalScore.toFixed(2),
-      time: new Date().toISOString(), // 현재 시간을 ISO 형식으로 추가
-  };
 
-  // Flask (/save_to_sheet) or Node server or Apps Script URL에 맞게 변경
-  fetch('/save_to_sheet', {
-      method: 'POST',
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-  })
-  .then(response => response.json())
-  .then(res => {
-      console.log("서버 응답:", res);
-      if (res.status === "success") {
-          // 1) 제출이 완료되었다는 알림창
-          alert("제출이 완료되었습니다!");
-          // 2) 맨 처음 게임 시작화면(landing-page)으로 돌아가기
-          prapare(); 
-      } else {
-          console.warn("서버에서 오류 반환:", res.message);
-      }
-  })
-  .catch(error => {
-      console.error("Node fetch 오류:", error);
-  });
+    let data = {
+        company,
+        employeeId,
+        name,
+        totalScore: totalScore.toFixed(2),
+        time: new Date().toISOString() // ex: "2025-01-07T08:53:36.922Z"
+    };
+
+    // 1) 공통 fetch 옵션
+    const fetchOptions = {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    };
+
+    // 2) 병렬 fetch
+    Promise.all([
+        // (A) Google Apps Script에 기록하기 (Flask 라우트: /save_to_sheet)
+        fetch('/save_to_sheet', fetchOptions),
+        // (B) 로컬 ranking_data.json에 기록하기 (Flask 라우트: /save_to_local)
+        fetch('/save_to_local', fetchOptions)
+    ])
+    .then(([respSheet, respLocal]) => {
+        // 두 응답을 모두 JSON으로 변환
+        return Promise.all([respSheet.json(), respLocal.json()]);
+    })
+    .then(([sheetData, localData]) => {
+        console.log("Google Sheets 응답:", sheetData);
+        console.log("Local JSON 응답:", localData);
+
+        // sheetData, localData 내 status 확인
+        if (sheetData.status === "success" && localData.status === "success") {
+            alert("응모 완료! (Google 시트 + 로컬 JSON 병렬 저장)");
+            // 맨 처음 게임 시작화면으로
+            prapare();
+        } else {
+            alert("저장 중 일부 에러 발생. 콘솔을 확인하세요.");
+            console.warn("sheetData:", sheetData, "localData:", localData);
+        }
+    })
+    .catch(error => {
+        console.error("병렬 저장 오류:", error);
+        alert("병렬 저장 중 오류 발생. 콘솔 확인 바람.");
+    });
 }
 
 
