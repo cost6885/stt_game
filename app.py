@@ -479,8 +479,8 @@ def finish_game():
         }
 
     # 원한다면 여기서 session pop
-    # session.pop("round_scores", None)
-    # session.pop("game_start_time", None)
+    session.pop("round_scores", None)
+    session.pop("game_start_time", None)
 
     return jsonify({
         "finalScore": final_score,
