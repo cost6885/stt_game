@@ -495,20 +495,16 @@ function handleTranscriptionFail() {
     showRoundFeedback(lastReference, "", 0, "");
 }
 
-/** 게임 종료 → 최종 점수 폼 */
+/** 게임 종료 → 서버가 최종 점수 계산 & 저장 */
 function endGame() {
-    // 점수 이미지 숨기기
+    // 1) UI 정리
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     scoreImageWrapper.style.display = "none";
 
-    // 간단히 클라이언트에서 평균 내어 표시 (실제로는 서버에서 최종 계산 추천)
-    const sum = roundScores.reduce((acc, cur) => acc + cur, 0);
-    const avg = roundScores.length > 0 ? (sum / roundScores.length) : 0;
-    const finalScore = Math.round(avg);
-
-    document.getElementById('final-score').innerText = finalScore;
+    // 2) 회사/사번/이름 정보를 입력받기 위해 폼 표시 (혹은 모달)
     showFormContainer();
 }
+
 
 /** Differences 하이라이팅 */
 function highlightDifferences(original, recognized) {
@@ -528,7 +524,6 @@ function highlightDifferences(original, recognized) {
     return resultHtml;
 }
 
-/** 최종 점수 제출 */
 function sendToGoogleSheets() {
     const company = document.getElementById('company').value.trim();
     const employeeId = document.getElementById('employeeId').value.trim();
@@ -539,58 +534,48 @@ function sendToGoogleSheets() {
         return;
     }
 
-    // 클라이언트 단 평균점수 (서버에서 확정할 것을 권장)
-    const sum = roundScores.reduce((acc, cur) => acc + cur, 0);
-    const avg = roundScores.length > 0 ? (sum / roundScores.length) : 0;
-    const finalScore = Math.round(avg);
-
     // 부정행위 체크
     if (isCheating()) {
         alert("부정행위가 감지되었습니다. 게임을 다시 진행해주세요.");
-        console.warn("부정행위로 인해 제출이 중단됨.");
         prapare();
         return;
     }
 
-    let data = {
-        company,
-        employeeId,
-        name,
-        totalScore: finalScore,
-        time: new Date().toISOString()
-    };
-
-    // 병렬 fetch
-    const fetchOptions = {
+    // (A) 서버로 회사/사번/이름만 보냄 (점수 X)
+    fetch('/finish_game', {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-    };
+        body: JSON.stringify({
+            company,
+            employeeId,
+            name
+            // totalScore는 보내지 않음!
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("finish_game 응답:", data);
 
-    Promise.all([
-        // (A) Google Apps Script
-        fetch('/save_to_sheet', fetchOptions),
-        // (B) 로컬 ranking_data.json
-        fetch('/save_to_local', fetchOptions)
-    ])
-    .then(([respSheet, respLocal]) => Promise.all([respSheet.json(), respLocal.json()]))
-    .then(([sheetData, localData]) => {
-        console.log("Google Sheets 응답:", sheetData);
-        console.log("Local JSON 응답:", localData);
+        if (data.error) {
+            alert("오류 발생: " + data.error);
+            return;
+        }
 
-        if (sheetData.status === "success" && localData.status === "success") {
-            alert("응모 완료!");
-            prapare();
+        // finalScore, localResult, sheetResult 등
+        if (data.localResult?.status === "success" && data.sheetResult?.status === "success") {
+            alert(`응모 완료! 최종점수: ${data.finalScore}`);
+            prapare(); // 초기화
         } else {
             alert("저장 중 일부 에러 발생");
-            console.warn("sheetData:", sheetData, "localData:", localData);
+            console.warn("localResult:", data.localResult, "sheetResult:", data.sheetResult);
         }
     })
-    .catch(error => {
-        console.error("저장 오류:", error);
+    .catch(err => {
+        console.error("finish_game 호출 오류:", err);
         alert("저장 중 오류 발생");
     });
 }
+
 
 /** 랭킹 보드 표시 (상위 5명 제한) */
 function displayRankings() {
