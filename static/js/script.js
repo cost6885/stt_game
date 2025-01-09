@@ -393,19 +393,19 @@ function sendAudio(audioData, referenceSentence) {
         return;
       }
       const { scores, stt_text, audio_path } = data;
-      if (!scores || typeof scores.Total !== 'number' || !stt_text) {
+      if (!scores || typeof scores.RoundScore !== 'number' || !stt_text) {
         console.warn('STT 결과 데이터 이상');
         handleTranscriptionFail();
         return;
       }
 
       // 클라이언트 단에 임시로 라운드별 점수 저장 (필요 없으면 제거 가능)
-      roundScores.push(scores.Total);
+      roundScores.push(scores.RoundScore);
 
       console.log(`라운드 ${currentRound} 점수: ${Math.round(scores.Total)}점`);
 
       // 라운드 피드백
-      showRoundFeedback(referenceSentence, stt_text, scores.Total, audio_path);
+      showRoundFeedback(referenceSentence, stt_text, scores.RoundScore, audio_path);
     })
     .catch(error => {
       console.error('STT 변환 오류:', error);
