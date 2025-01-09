@@ -18,6 +18,8 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = "ANY_RANDOM_SECRET_KEY_FOR_SESSION"  # 세션을 사용하려면 반드시 secret_key 설정 (임의 문자열)
 
+TOTAL_ROUNDS = 3
+
 # Load API Keys
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
