@@ -387,18 +387,21 @@ function sendAudio(audioData, referenceSentence) {
             handleTranscriptionFail();
             return;
         }
-        const whisperScore = scores.Whisper;
-        console.log(`라운드 ${currentRound} 점수: ${whisperScore}%`);
-        totalScore += whisperScore;
+
+        // totalScore에 바로 반영
+        totalScore += scores.Whisper; // Whisper 점수를 누적
+
+        console.log(`라운드 ${currentRound} 누적 점수: ${Math.round(totalScore)}점`);
 
         // 라운드 피드백
-        showRoundFeedback(referenceSentence, stt_text, whisperScore, audio_path);
+        showRoundFeedback(referenceSentence, stt_text, totalScore, audio_path); // totalScore를 전달
     })
     .catch(error => {
         console.error('STT 변환 오류:', error);
         handleTranscriptionFail();
     });
 }
+
 
 
 // 점수별 이미지 매핑 (예시)
@@ -423,7 +426,7 @@ function getScoreImage(score) {
 
 
 /** 라운드 피드백 표시 */
-function showRoundFeedback(reference, recognized, score, audioPath) {
+function showRoundFeedback(reference, recognized, totalScore, audioPath) {
     // 라운드 페이지 숨기고 피드백 페이지 활성화
     roundPage.classList.remove('active');
     roundFeedbackPage.classList.add('active');
@@ -431,33 +434,34 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
     // 자동재생 시도 (브라우저 정책에 따라 차단 가능)
     recordedAudioEl.src = audioPath || "";        
     recordedAudioEl.load();
-    
+
     originalTextEl.innerHTML = reference;
     recognizedTextEl.innerHTML = highlightDifferences(reference, recognized);
 
+    // 점수 등급에 따른 클래스와 텍스트 설정
     let feedbackClass = "bad";
     let feedbackText = "BAD";
-    if (score > 90) {
+    if (totalScore > 90) {
         feedbackClass = "good";
         feedbackText = "GOOD";
-    } else if (score > 70) {
+    } else if (totalScore > 70) {
         feedbackClass = "normal";
         feedbackText = "NORMAL";
     }
     scoreFeedbackTextEl.className = "score-feedback " + feedbackClass;
-    scoreFeedbackTextEl.textContent = `${feedbackText} ( ${score.toFixed(2)}% )`;
-    
+    scoreFeedbackTextEl.textContent = `${feedbackText} ( ${Math.round(totalScore)}% )`;
+
     // ★ 추가: 버튼 이름 업데이트
-    if (score === 0) {
+    if (totalScore === 0) {
         nextRoundBtn.textContent = "다시하기";
         nextRoundBtn.onclick = prapare; // "다시하기" 클릭 시 초기화
     } else {
         updateNextRoundButtonLabel(); // 기존 로직 유지
         nextRoundBtn.onclick = handleNextRound; // 다음 라운드로 이동
     }    
-    
+
     // ★ 추가: 점수별 이미지 표시
-    const scoreImageFile = getScoreImage(score);
+    const scoreImageFile = getScoreImage(totalScore);
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     if (scoreImageFile) {
         // 경로: /static/images/<파일명>
@@ -470,6 +474,7 @@ function showRoundFeedback(reference, recognized, score, audioPath) {
         scoreImageWrapper.style.display = "none";
     }
 }
+
 
 /** "다음 라운드" 처리 */
 function handleNextRound() {
@@ -492,8 +497,9 @@ function handleNextRound() {
 /** 오류 발생 시 0점 처리 & 피드백 페이지 표시 (원문=lastReference, 인식="", 점수=0) */
 function handleTranscriptionFail() {
     console.warn("Transcription failed or no speech -> 0점 처리.");
-    const whisperScore = 0;
-    showRoundFeedback(lastReference, "", whisperScore, "");
+    
+    // 누적 점수는 변경하지 않고 0점 피드백 전달
+    showRoundFeedback(lastReference, "", totalScore, "");
 }
 
 
@@ -504,7 +510,7 @@ function endGame() {
     scoreImageWrapper.style.display = "none";
 
     // 최종 점수를 표시
-    document.getElementById('final-score').innerText = Math.floor(totalScore); // 소수점 제거
+    document.getElementById('final-score').innerText = Math.round(totalScore);
 
     // 응모 폼 표시 (랭킹 보드는 숨김)
     showFormContainer();
@@ -552,9 +558,10 @@ function sendToGoogleSheets() {
         company,
         employeeId,
         name,
-        totalScore: totalScore.toFixed(2),
-        time: new Date().toISOString() // ex: "2025-01-07T08:53:36.922Z"
+        totalScore: Math.round(totalScore), // 소수점 없이 정수로 전송
+        time: new Date().toISOString()
     };
+
 
     // 1) 공통 fetch 옵션
     const fetchOptions = {
