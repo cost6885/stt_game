@@ -8,17 +8,18 @@ const totalRounds = 3;
 let countdownInterval;
 let micTestPassed = false;
 
-// let totalScore = 0;
-// 대신 라운드별 점수를 담을 배열 추가
+// 기존: let totalScore = 0; 
+// 대신 라운드별 점수를 담을 배열 => 필요하다면 유지, 
+// 혹은 서버가 점수를 관리하는 방식이면 굳이 안 써도 됨.
 let roundScores = [];
 
-// 타이머 시작 시간 변수
+// 타이머 시작 시간(프론트에서의 경과 시간 체크)
 let gameStartTime;
 
 /** 이미 사용한 문장 리스트 */
 let usedSentences = []; 
 
-/** 현재 라운드에서 불러온 원문을 저장해둘 변수 */
+/** 현재 라운드에서 불러온 원문을 저장 */
 let lastReference = ""; 
 
 // 기존 필드 or 문구
@@ -28,15 +29,15 @@ const requiredTestSentence = typeof testSentence !== 'undefined' ? testSentence 
 const landingPage = document.getElementById('landing-page');
 const micTestPage = document.getElementById('mic-test-page');
 
-// 게임 시작 페이지
+// 게임 시작 로딩 페이지
 const gameStartPage = document.getElementById('game-start-page');
-gameStartPage.style.display = 'none';  // 초기에는 숨김
+gameStartPage.style.display = 'none';  // 초기 숨김
 
-// 라운드 / 피드백
+// 라운드 / 피드백 페이지
 const roundPage = document.getElementById('round-page');
 const roundFeedbackPage = document.getElementById('round-feedback-page');
 
-// 폼 컨테이너
+// 폼 컨테이너 (최종 점수 입력)
 const formContainer = document.getElementById('formContainer');
 const finalScoreDisplay = document.getElementById('final-score');
 
@@ -73,9 +74,9 @@ function updateNextRoundButtonLabel() {
 function showPage(page) {
     [landingPage, micTestPage, roundPage, roundFeedbackPage].forEach(p => p.classList.remove('active'));
     page.classList.add('active');
-    // ★ 랭킹 보드 업데이트
+    // 랭킹 보드 업데이트 (landingPage일 때만)
     if (page === landingPage) {
-        displayRankings(); // 랜딩 페이지가 활성화될 때 랭킹 보드 업데이트
+        displayRankings();
     }
 }
 
@@ -87,18 +88,16 @@ function hideFormContainer() {
     formContainer.style.display = "none";
 }
 
-/** 시작 버튼 */
+/** 시작 버튼 클릭 → 마이크 테스트 페이지로 */
 startGameBtn.addEventListener('click', () => {
-    // 페이지 전환
     showPage(micTestPage);
 
     // 랭킹 보드 숨기기
     const rankingBoard = document.getElementById('ranking-board-container');
     if (rankingBoard) {
-        rankingBoard.style.display = 'none'; // 랭킹 보드 숨기기
+        rankingBoard.style.display = 'none';
     }
 });
-
 
 /** 마이크 테스트 버튼 */
 testMicBtn.addEventListener('click', async () => {
@@ -163,6 +162,7 @@ function sendAudioForTest(audioData, referenceSentence) {
             return;
         }
 
+        // Whisper 점수가 50 이상이면 통과, 아니면 실패
         if (scores.Whisper > 50) {
             micStatus.innerText = "마이크 테스트 성공.";
             micTestPassed = true;
@@ -170,7 +170,7 @@ function sendAudioForTest(audioData, referenceSentence) {
         } else {
             micStatus.innerText = `말을 하셨나요? 점수: ${Math.round(scores.Whisper)}`;
             micTestPassed = false;
-            // (테스트 편의상) 자동 우회
+            // (테스트 편의를 위해 자동 우회)
             micTestPassed = true;
             startGameSequence();
         }
@@ -182,7 +182,6 @@ function sendAudioForTest(audioData, referenceSentence) {
     });
 }
 
-
 /** 게임 시작 시퀀스 */
 function startGameSequence() {
     if (!micTestPassed) {
@@ -190,46 +189,47 @@ function startGameSequence() {
         return;
     }
 
-    // (1) 서버에 '/start_game' POST → 세션에 game_start_time 기록
+    // 서버에 /start_game → 세션에 game_start_time 기록
     fetch('/start_game', { method: 'POST' })
         .then(response => response.json())
         .then(data => {
             console.log("서버에서 게임 시작 시간 설정 완료:", data);
 
-            // (2) 클라이언트 쪽에서도 로컬 gameStartTime 저장
+            // 로컬 측에서도 타이머 시작 시간 기록
             gameStartTime = Date.now();
 
-            // (3) 이후 UI 전환 (로딩 모션 2초 노출 등)
+            // 로딩 페이지 2초 노출
             gameStartPage.style.display = 'flex';
             setTimeout(() => {
                 gameStartPage.style.display = 'none';
                 currentRound = 1;
-                // roundScores 배열 비우기 (새 게임 시작이므로)
+                // 새 게임 시작이므로 roundScores 비우기
                 roundScores = [];  
-                usedSentences = []; // 중복 방지 리스트 초기화
+                usedSentences = [];
 
-                // 라운드 페이지로 이동
                 showPage(roundPage);
                 startRound(currentRound);
             }, 2000);
-
         })
         .catch(err => {
             console.error("'/start_game' 호출 오류:", err);
-            micStatus.innerText = "서버에 게임 시작을 알리는 중 오류 발생 (네트워크 상태 확인)";
+            micStatus.innerText = "서버에 게임 시작 알리는 중 오류 발생";
         });
 }
 
 /** 라운드를 진행했는지 확인 */
 function checkRoundsCompleted() {
-    return currentRound > 1 || totalScore > 0; // 라운드 진행 여부 판단
+    // 기존 totalScore 없이, 간단히 currentRound>1 인지로만 판단
+    // 또는 roundScores.length > 0 여부 등
+    return currentRound > 1 || roundScores.length > 0;
 }
 
 /** 부정행위 여부 판단 */
 function isCheating() {
-    const elapsedTime = Date.now() - gameStartTime; // 경과 시간 계산
+    const elapsedTime = Date.now() - gameStartTime; // ms
     const roundsCompleted = checkRoundsCompleted();
-    return !roundsCompleted || elapsedTime < 30000; // 라운드를 통과하지 않았거나 30초 미만인 경우
+    // 30초 미만이거나, 라운드 하나도 안 했으면 부정행위
+    return !roundsCompleted || elapsedTime < 30000;
 }
 
 /** 라운드 시작 */
@@ -251,9 +251,6 @@ function startRound(round) {
     let countdown = 5;
     countdownDisplay.innerText = countdown;
 
-    // Progress Bar 안 씀 (5초 카운트다운은 숫자만)
-    // => remove code for bar here
-
     countdownInterval = setInterval(() => {
         countdown--;
         if (countdown <= 0) {
@@ -273,7 +270,7 @@ function fetchGameSentenceAndStartRecording() {
     function fetchDistinctSentence() {
         attempts++;
         if (attempts > 5) {
-            console.warn("중복 제거 실패, 5회 시도 후 중복 문장이라도 진행합니다.");
+            console.warn("중복 제거 실패(5회), 중복 문장이라도 진행");
             proceedRecording("어쩔 수 없이 중복 문장", true);
             return;
         }
@@ -293,8 +290,8 @@ function fetchGameSentenceAndStartRecording() {
                 }
                 // 중복 검사
                 if (usedSentences.includes(gameSentence)) {
-                    console.log("중복 문장 감지, 재시도...");
-                    fetchDistinctSentence(); // 재시도
+                    console.log("중복 문장 → 재시도");
+                    fetchDistinctSentence();
                 } else {
                     usedSentences.push(gameSentence);
                     proceedRecording(gameSentence, false);
@@ -339,26 +336,25 @@ function startRecording(referenceSentence) {
                 audioChunks = [];
             };
 
-            // ★ Progress Bar 설정
+            // Progress Bar
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
-            progressContainer.style.display = "block"; // Progress Bar 표시
-            progressBar.style.width = "100%"; // 초기 너비
+            progressContainer.style.display = "block";
+            progressBar.style.width = "100%";
 
-            // 부드러운 감소를 위해 transition 설정
             progressBar.style.transition = "width 0.1s linear";
 
-            let totalTime = 10; // 총 10초
+            let totalTime = 10; // 녹음 10초
             let elapsedTime = 0;
-            let intervalDuration = 100; // 0.1초 간격
-            const steps = totalTime * 1000 / intervalDuration; // 총 업데이트 횟수
-            const decrement = 100 / steps; // 매 업데이트 시 감소율
+            let intervalDuration = 100; // 0.1초
+            const steps = totalTime * 1000 / intervalDuration; 
+            const decrement = 100 / steps; 
 
             let recordInterval = setInterval(() => {
-                elapsedTime += intervalDuration / 1000; // 경과 시간 업데이트
+                elapsedTime += intervalDuration / 1000;
                 if (elapsedTime >= totalTime) {
                     clearInterval(recordInterval);
-                    stopRecording(); // 10초 도달 시 녹음 중지
+                    stopRecording();
                 } else {
                     const percentage = 100 - (elapsedTime / totalTime) * 100;
                     progressBar.style.width = `${percentage}%`;
@@ -368,24 +364,21 @@ function startRecording(referenceSentence) {
         })
         .catch(error => {
             console.error('녹음 접근 오류:', error);
-            handleTranscriptionFail(); // 0점
+            handleTranscriptionFail();
         });
 }
-
 
 function stopRecording() {
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.stop();
         gameStatus.innerText = "녹음 중지됨.";
 
-        // 녹음 끝나면 Progress Bar 다시 숨기기
         const progressContainer = document.getElementById('progress-container');
         progressContainer.style.display = "none";
     }
 }
 
 /** STT 처리 */
-// --- sendAudio() 내부 ---
 function sendAudio(audioData, referenceSentence) {
   fetch('/process', {
     method: 'POST',
@@ -406,11 +399,10 @@ function sendAudio(audioData, referenceSentence) {
         return;
       }
 
-      // *기존: totalScore += scores.Total; -> 삭제*
-      // 대신 해당 라운드 점수를 배열에 저장
+      // 클라이언트 단에 임시로 라운드별 점수 저장 (필요 없으면 제거 가능)
       roundScores.push(scores.Total);
 
-      console.log(`라운드 ${currentRound} 점수: ${Math.round(scores.Total)}점 (누적 아님)`);
+      console.log(`라운드 ${currentRound} 점수: ${Math.round(scores.Total)}점`);
 
       // 라운드 피드백
       showRoundFeedback(referenceSentence, stt_text, scores.Total, audio_path);
@@ -421,47 +413,33 @@ function sendAudio(audioData, referenceSentence) {
     });
 }
 
-
-
-
-
-// 점수별 이미지 매핑 (예시)
+/** 점수별 이미지 매핑 */
 function getScoreImage(score) {
-    // 조건: 0, 0~10, 10~20, 20~30, 30~40, 40~60, 60~70, 70~80, 80~90, 100
-    // stt_game/static/images/ 폴더 내 파일명
     if (score === 0) return "ya.gif";
     else if (score > 0 && score <= 10) return "jjugul.gif";
     else if (score > 10 && score <= 20) return "myom.gif";
     else if (score > 20 && score <= 30) return "showr.gif";
     else if (score > 30 && score <= 40) return "whatdo.gif";
     else if (score > 40 && score <= 60) return "youcandoit.gif";
-    else if (score > 60 && score <= 70) return "thismakes.gif";   // 주의: user typed 'thismakesgif' but it might be 'thismakes.gif'
+    else if (score > 60 && score <= 70) return "thismakes.gif";
     else if (score > 70 && score <= 80) return "party.gif";
     else if (score > 80 && score <= 90) return "thumbup.gif";
     else if (score === 100) return "welldone.gif";
-    // 점수가 90~100 사이지만 100이 아니면 어쩌나? 
-    // 이하 임의 처리
     else if (score > 90 && score < 100) return "thumbup.gif"; 
     return null;
 }
 
-
-
 /** 라운드 피드백 표시 */
 function showRoundFeedback(reference, recognized, roundScore, audioPath) {
-    // 라운드 페이지 숨기고 피드백 페이지 활성화
     roundPage.classList.remove('active');
     roundFeedbackPage.classList.add('active');
 
-    // 자동재생 시도 (브라우저 정책에 따라 차단 가능)
-    recordedAudioEl.src = audioPath || "";        
+    recordedAudioEl.src = audioPath || "";
     recordedAudioEl.load();
 
-    // 원문 / STT 결과 표시
     originalTextEl.innerHTML = reference;
     recognizedTextEl.innerHTML = highlightDifferences(reference, recognized);
 
-    // 점수 등급에 따른 클래스와 텍스트 설정
     let feedbackClass = "bad";
     let feedbackText = "BAD";
     if (roundScore > 90) {
@@ -471,42 +449,34 @@ function showRoundFeedback(reference, recognized, roundScore, audioPath) {
         feedbackClass = "normal";
         feedbackText = "NORMAL";
     }
-    
-    // 점수 표시
+
     scoreFeedbackTextEl.className = "score-feedback " + feedbackClass;
     scoreFeedbackTextEl.textContent = `${feedbackText} ( ${Math.round(roundScore)}% )`;
 
-    // ★ 추가: 버튼 이름 업데이트
+    // 버튼 업데이트
     if (roundScore === 0) {
         nextRoundBtn.textContent = "다시하기";
-        nextRoundBtn.onclick = prapare; // "다시하기" 클릭 시 초기화
+        nextRoundBtn.onclick = prapare;
     } else {
-        updateNextRoundButtonLabel(); // 기존 로직 유지
-        nextRoundBtn.onclick = handleNextRound; // 다음 라운드로 이동
-    }    
+        updateNextRoundButtonLabel();
+        nextRoundBtn.onclick = handleNextRound;
+    }
 
-    // ★ 추가: 점수별 이미지 표시
+    // 점수별 이미지 표시
     const scoreImageFile = getScoreImage(roundScore);
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     if (scoreImageFile) {
-        // 경로: /static/images/<파일명>
-        scoreImageWrapper.innerHTML = `
-            <img src="/static/images/${scoreImageFile}" alt="scoreImage">
-        `;
+        scoreImageWrapper.innerHTML = `<img src="/static/images/${scoreImageFile}" alt="scoreImage">`;
         scoreImageWrapper.style.display = "block";
     } else {
-        // 해당 구간에 이미지 없으면 숨김
         scoreImageWrapper.style.display = "none";
     }
 }
 
-
-
-/** "다음 라운드" 처리 */
+/** "다음 라운드" */
 function handleNextRound() {
     roundFeedbackPage.classList.remove('active');
 
-    // 점수 이미지 숨기기
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     scoreImageWrapper.style.display = "none";
     
@@ -519,38 +489,26 @@ function handleNextRound() {
     }
 }
 
-
-/** 오류 발생 시 0점 처리 & 피드백 페이지 표시 */
+/** 오류 발생 시 0점 처리 */
 function handleTranscriptionFail() {
     console.warn("Transcription failed or no speech -> 0점 처리.");
-    
-    // 피드백에 0점 표시
     showRoundFeedback(lastReference, "", 0, "");
 }
 
-
-
-/** 게임 종료 → formContainer로 이동하여 최종 점수 제출 */
+/** 게임 종료 → 최종 점수 폼 */
 function endGame() {
-    // ★ 점수 이미지 숨기기
+    // 점수 이미지 숨기기
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     scoreImageWrapper.style.display = "none";
 
-    // 평균 계산
+    // 간단히 클라이언트에서 평균 내어 표시 (실제로는 서버에서 최종 계산 추천)
     const sum = roundScores.reduce((acc, cur) => acc + cur, 0);
-    const avg = sum / roundScores.length;
-
-    // 최종 점수: 평균값
+    const avg = roundScores.length > 0 ? (sum / roundScores.length) : 0;
     const finalScore = Math.round(avg);
 
-    // 화면에 표시
     document.getElementById('final-score').innerText = finalScore;
-
-    // 응모 폼 표시 (랭킹 보드는 숨김)
     showFormContainer();
 }
-
-
 
 /** Differences 하이라이팅 */
 function highlightDifferences(original, recognized) {
@@ -570,27 +528,27 @@ function highlightDifferences(original, recognized) {
     return resultHtml;
 }
 
+/** 최종 점수 제출 */
 function sendToGoogleSheets() {
-    let company = document.getElementById('company').value.trim();
-    let employeeId = document.getElementById('employeeId').value.trim();
-    let name = document.getElementById('name').value.trim();
+    const company = document.getElementById('company').value.trim();
+    const employeeId = document.getElementById('employeeId').value.trim();
+    const name = document.getElementById('name').value.trim();
 
     if (!company || !employeeId || !name) {
         console.warn("모든 정보를 입력해주세요!");
         return;
     }
 
-
-    // 평균점수 구하기
+    // 클라이언트 단 평균점수 (서버에서 확정할 것을 권장)
     const sum = roundScores.reduce((acc, cur) => acc + cur, 0);
-    const avg = sum / roundScores.length;
+    const avg = roundScores.length > 0 ? (sum / roundScores.length) : 0;
     const finalScore = Math.round(avg);
-    
-    // 부정행위 판별
+
+    // 부정행위 체크
     if (isCheating()) {
         alert("부정행위가 감지되었습니다. 게임을 다시 진행해주세요.");
-        console.warn("부정행위로 인해 제출이 중단되었습니다.");
-        prapare(); // 초기화 후 다시 시작
+        console.warn("부정행위로 인해 제출이 중단됨.");
+        prapare();
         return;
     }
 
@@ -598,37 +556,30 @@ function sendToGoogleSheets() {
         company,
         employeeId,
         name,
-        totalScore: finalScore,  // ★ 여기서 평균 사용
+        totalScore: finalScore,
         time: new Date().toISOString()
     };
 
-
-    // 1) 공통 fetch 옵션
+    // 병렬 fetch
     const fetchOptions = {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
     };
 
-    // 2) 병렬 fetch
     Promise.all([
-        // (A) Google Apps Script에 기록하기 (Flask 라우트: /save_to_sheet)
+        // (A) Google Apps Script
         fetch('/save_to_sheet', fetchOptions),
-        // (B) 로컬 ranking_data.json에 기록하기 (Flask 라우트: /save_to_local)
+        // (B) 로컬 ranking_data.json
         fetch('/save_to_local', fetchOptions)
     ])
-    .then(([respSheet, respLocal]) => {
-        // 두 응답을 모두 JSON으로 변환
-        return Promise.all([respSheet.json(), respLocal.json()]);
-    })
+    .then(([respSheet, respLocal]) => Promise.all([respSheet.json(), respLocal.json()]))
     .then(([sheetData, localData]) => {
         console.log("Google Sheets 응답:", sheetData);
         console.log("Local JSON 응답:", localData);
 
-        // sheetData, localData 내 status 확인
         if (sheetData.status === "success" && localData.status === "success") {
             alert("응모 완료!");
-            // 맨 처음 게임 시작화면으로
             prapare();
         } else {
             alert("저장 중 일부 에러 발생");
@@ -641,104 +592,90 @@ function sendToGoogleSheets() {
     });
 }
 
-
-
+/** 랭킹 보드 표시 (상위 5명 제한) */
 function displayRankings() {
     const rankingBoard = document.getElementById('ranking-board-container');
     const rankingList = document.getElementById('ranking-list');
     const rankmoreBtn = document.getElementById('rankmore');
 
-    // "로딩 중" 메시지를 rankingList에 표시
+    if (!rankingBoard || !rankingList) return;
+
     rankingList.innerHTML = '<div>로딩 중...</div>';
     rankingBoard.style.display = 'block';
 
     fetch('/get_rankings?timestamp=' + Date.now())
         .then(response => response.json())
         .then(data => {
-            // 1) 데이터 검사
             if (!data.rankings || data.rankings.length === 0) {
                 throw new Error("No rankings available from server");
             }
 
-            // 2) 부정행위자 제외
+            // 부정행위 제외
             let filteredRankings = data.rankings.filter(entry => entry.status !== "부정행위");
             if (filteredRankings.length === 0) {
-                // 필터 후에 아무도 없으면 에러로 처리
                 throw new Error("No valid (non-cheater) rankings available");
             }
 
-            // 3) 정렬 (우선 참여횟수 desc, 그 다음 도달시간 asc, 그 다음 점수 desc)
+            // 정렬: 참여횟수(desc) → responseTime(asc) → score(desc)
             filteredRankings.sort((a, b) => {
-                // participationCount 내림차순
                 if (b.participationCount !== a.participationCount) {
                     return b.participationCount - a.participationCount;
                 }
-                // responseTime 오름차순
                 const aTime = new Date(a.responseTime).getTime();
                 const bTime = new Date(b.responseTime).getTime();
                 if (aTime !== bTime) {
                     return aTime - bTime;
                 }
-                // score 내림차순
                 return b.score - a.score;
             });
 
-            // 4) 기존 내용 지우기
             rankingList.innerHTML = '';
 
-            // 5) 표시
-            filteredRankings.forEach((entry, index) => {
-                const rankItem = document.createElement('div');
+            // ★ 상위 5명만 표시 (rankmore 버튼 있을 경우를 대비)
+            const topFive = filteredRankings.slice(0, 5);
 
-                // 표시할 텍스트
+            topFive.forEach((entry, index) => {
+                const rankItem = document.createElement('div');
                 const rankText = `${entry.name} (${entry.company}) - 최고점수: ${entry.score}, 참여: ${entry.participationCount}회`;
 
-                // 1등, 2등, 3등, 그 외 구분
                 if (index === 0) {
-                    // 1등 - 가장 진한 검정색
                     rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: rgba(0, 0, 0, 1);">1등🥇 ${rankText}</span>`;
                 } else if (index === 1) {
-                    // 2등 - 약간 밝은 색
                     rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: rgba(0, 0, 0, 0.8);">2등🥈 ${rankText}</span>`;
                 } else if (index === 2) {
-                    // 3등 - 더 밝은 색
                     rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: rgba(0, 0, 0, 0.6);">3등🥉 ${rankText}</span>`;
                 } else {
-                    // 나머지 등수 - 점점 흐려짐
-                    const alpha = Math.max(0.4, 1 - index * 0.1); // 등수가 내려갈수록 투명도 증가, 최소 0.4
+                    const alpha = Math.max(0.4, 1 - index * 0.1);
                     rankItem.innerHTML = `<span class="name" style="color: rgba(0, 0, 0, ${alpha});">${index + 1}등🙄 ${rankText}</span>`;
                 }
-                
                 rankingList.appendChild(rankItem);
             });
 
-            // 6) rankmore 버튼 표시 (정상 데이터 로드 후)
-            if (rankmoreBtn) {
+            // 만약 전체 데이터가 5명 이하라면 rankmoreBtn 안 보이게
+            if (filteredRankings.length > 5) {
                 rankmoreBtn.style.display = 'block';
+            } else {
+                rankmoreBtn.style.display = 'none';
             }
         })
         .catch(error => {
             console.error('랭킹 데이터를 가져오는 중 오류 발생:', error);
             rankingList.innerHTML = '<div>랭킹 데이터를 불러올 수 없습니다.</div>';
-
-            // rankmore 버튼 숨기기 (에러 시에는 불필요하다고 가정)
             if (rankmoreBtn) {
                 rankmoreBtn.style.display = 'none';
             }
         });
 }
 
-
-
+/** rankmore → 전체 랭킹 팝업 */
 function rankmore() {
-    // 1) 새 팝업 창 열기
+    // 팝업
     const popup = window.open("", "RankPopup", "width=600,height=800");
     if (!popup) {
-        alert("팝업이 차단되었습니다. 팝업 차단을 해제해주세요!");
+        alert("팝업이 차단되었습니다. 팝업 차단 해제 후 다시 시도!");
         return;
     }
 
-    // 2) 팝업 기본 HTML 구성
     popup.document.write(`
         <html>
         <head>
@@ -748,24 +685,18 @@ function rankmore() {
                     font-family: 'Nanum Gothic', sans-serif;
                     background-color: #f9f9f9;
                     text-align: center;
-                    margin: 0;
-                    padding: 20px;
+                    margin: 0; padding: 20px;
                 }
                 #popup-ranking-board {
-                    margin: 0 auto;
-                    padding: 20px;
+                    margin: 0 auto; padding: 20px;
                     border-radius: 10px;
                     background-color: rgba(255, 255, 0, 0.5);
-                    color: black;
-                    font-weight: bold;
-                    line-height: 1.6;
-                    width: 80%;
+                    color: black; font-weight: bold;
+                    line-height: 1.6; width: 80%;
                     max-width: 500px;
                 }
                 .rank-entry {
-                    margin: 10px 0;
-                    font-size: 16px;
-                    text-align: left;
+                    margin: 10px 0; font-size: 16px; text-align: left;
                 }
             </style>
         </head>
@@ -776,10 +707,9 @@ function rankmore() {
         </html>
     `);
 
-    // 3) 팝업창의 문서 객체 참조
     const popupDoc = popup.document;
 
-    // 4) /get_rankings (혹은 Google Apps Script)로 fetch
+    // 전체 랭킹(제한 없이) 불러오기 → 별도 파라미터 all=true
     fetch('/get_rankings?all=true')
         .then(res => {
             if (!res.ok) {
@@ -790,69 +720,43 @@ function rankmore() {
         .then(data => {
             let entireRankings = data.rankings || [];
 
-            // (1) 부정행위자 제외
+            // 부정행위자 제외
             entireRankings = entireRankings.filter(entry => entry.status !== "부정행위");
             if (entireRankings.length === 0) {
                 throw new Error("No valid (non-cheater) rankings available");
             }
 
-            // (2) 정렬
-            //   1) participationCount 내림차순
-            //   2) responseTime 오름차순 (빠른 시간 우선)
-            //   3) score 내림차순
+            // 정렬 동일
             entireRankings.sort((a, b) => {
-                // 참여 횟수: desc
                 if (b.participationCount !== a.participationCount) {
                     return b.participationCount - a.participationCount;
                 }
-                // 응답시간: asc
                 const aTime = new Date(a.responseTime).getTime();
                 const bTime = new Date(b.responseTime).getTime();
                 if (aTime !== bTime) {
                     return aTime - bTime;
                 }
-                // 점수: desc
                 return b.score - a.score;
             });
 
-            // (3) 표시할 DOM
             const container = popupDoc.getElementById('popup-ranking-board');
-            container.innerHTML = ''; // "불러오는 중..." 지우기
+            container.innerHTML = '';
 
-            // (4) 순회하며 HTML 생성
             entireRankings.forEach((entry, index) => {
                 const div = popupDoc.createElement('div');
                 div.className = 'rank-entry';
 
-                // 기본 텍스트
                 const rankText = `${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
 
-                // 1등/2등/3등/그 외 디자인
                 if (index === 0) {
-                    // 1등 → 진한 검정색
-                    div.innerHTML = `
-                        <span style="font-weight:bold; color: rgba(0, 0, 0, 1);">
-                            1등🥇 ${rankText}
-                        </span>`;
+                    div.innerHTML = `<span style="font-weight:bold; color: rgba(0,0,0,1);">1등🥇 ${rankText}</span>`;
                 } else if (index === 1) {
-                    // 2등 → 좀 더 밝은 검정
-                    div.innerHTML = `
-                        <span style="font-weight:bold; color: rgba(0, 0, 0, 0.8);">
-                            2등🥈 ${rankText}
-                        </span>`;
+                    div.innerHTML = `<span style="font-weight:bold; color: rgba(0,0,0,0.8);">2등🥈 ${rankText}</span>`;
                 } else if (index === 2) {
-                    // 3등 → 좀 더 밝은 검정
-                    div.innerHTML = `
-                        <span style="font-weight:bold; color: rgba(0, 0, 0, 0.6);">
-                            3등🥉 ${rankText}
-                        </span>`;
+                    div.innerHTML = `<span style="font-weight:bold; color: rgba(0,0,0,0.6);">3등🥉 ${rankText}</span>`;
                 } else {
-                    // 4등~
                     const alpha = Math.max(0.4, 1 - index * 0.1);
-                    div.innerHTML = `
-                        <span style="color: rgba(0, 0, 0, ${alpha});">
-                            ${index + 1}등🙄 ${rankText}
-                        </span>`;
+                    div.innerHTML = `<span style="color: rgba(0,0,0,${alpha});">${index+1}등🙄 ${rankText}</span>`;
                 }
 
                 container.appendChild(div);
@@ -865,20 +769,14 @@ function rankmore() {
         });
 }
 
-
-
-
-
-// DOMContentLoaded 이벤트가 발생했을 때 displayRankings 실행
+/** DOMContentLoaded → 랭킹 초기 표시 */
 document.addEventListener('DOMContentLoaded', () => {
-    displayRankings(); // 기존에 랭킹을 불러오는 함수
+    displayRankings();
     const rankmoreBtn = document.getElementById('rankmore');
     if (rankmoreBtn) {
         rankmoreBtn.addEventListener('click', rankmore);
     }
 });
-
-
 
 /** "다시하기" */
 function prapare() {
@@ -890,7 +788,6 @@ function prapare() {
 /** resetGame */
 function resetGame() {
     currentRound = 1;
-    totalScore = 0;
     usedSentences = []; 
     countdownDisplay.innerText = '';
     gameText.innerText = '';
@@ -899,12 +796,18 @@ function resetGame() {
     micStatus.innerText = '';
     micTestPassed = false;
 
-    // ★ 점수 이미지 숨기기
+    // 점수 이미지 숨기기
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     scoreImageWrapper.style.display = "none";
 
+    // 폼 초기화
     document.getElementById('final-score').innerText = '0';
     document.getElementById('company').value = '';
     document.getElementById('employeeId').value = '';
     document.getElementById('name').value = '';
+
+    // 클라이언트 임시 roundScores 배열도 비움
+    roundScores = [];
+    
+    // (원한다면 server 세션도 초기화 가능하지만 여기선 생략)
 }
