@@ -353,28 +353,130 @@ def test_local_rankings():
 
 
 
-# -----------------------------------------
-#  /finish_game : 최종 점수(평균 등) 계산 후 반환
-# -----------------------------------------
 @app.route('/finish_game', methods=['POST'])
 def finish_game():
-    # 세션에 round_scores가 있는지 체크
+    """
+    1) 부정행위 체크
+    2) 세션에 저장된 round_scores로 최종점수 계산
+    3) 로컬 ranking_data.json 저장 + 구글 Apps Script에 POST
+    4) 응답 반환
+    """
+    # 1) 부정행위(시간) 체크
+    is_cheat, reason = check_cheating_time(threshold=30)
+    
+    # 2) 요청 데이터 파싱 (회사, 사번, 이름 등)
+    data = request.get_json() or {}
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+    
+    company = data.get("company", "")
+    employeeId = data.get("employeeId", "")
+    name = data.get("name", "")
+
+    # 세션에 round_scores가 있는지 확인
     if "round_scores" not in session or len(session["round_scores"]) == 0:
         return jsonify({"error": "No round scores found."}), 400
 
-    # 라운드별 점수 평균 (예: 3라운드)
+    # 최종점수(평균)
     round_scores = session["round_scores"]
     avg_score = sum(round_scores) / len(round_scores)
     final_score = round(avg_score)
 
-    # 필요하다면 여기서 게임 플레이 끝났다고 세션 초기화 가능
+    # 상태값
+    if is_cheat:
+        status_value = "부정행위"
+    else:
+        status_value = "정상"
+
+    # -----------------------------
+    #  (A) 로컬 ranking_data.json 갱신
+    # -----------------------------
+    try:
+        local_file_path = "ranking_data.json"
+        try:
+            with open(local_file_path, "r", encoding="utf-8") as f:
+                local_data = json.load(f)
+        except FileNotFoundError:
+            local_data = {"rankings": []}
+        
+        if "rankings" not in local_data:
+            local_data["rankings"] = []
+
+        existingEntry = None
+        for entry in local_data["rankings"]:
+            if entry.get("company") == company and entry.get("employeeId") == employeeId:
+                existingEntry = entry
+                break
+
+        currentTimeStr = datetime.now().strftime("%Y. M. d %p %I:%M:%S")
+
+        if existingEntry:
+            oldScore = float(existingEntry.get("score", 0.0))
+            existingEntry["score"] = max(oldScore, final_score)
+            existingEntry["participationCount"] = existingEntry.get("participationCount", 1) + 1
+            existingEntry["responseTime"] = currentTimeStr
+            existingEntry["name"] = name
+            existingEntry["status"] = status_value
+        else:
+            newEntry = {
+                "rank": 0,
+                "company": company,
+                "employeeId": employeeId,
+                "name": name,
+                "score": final_score,
+                "participationCount": 1,
+                "responseTime": currentTimeStr,
+                "status": status_value
+            }
+            local_data["rankings"].append(newEntry)
+
+        with open(local_file_path, "w", encoding="utf-8") as f:
+            json.dump(local_data, f, ensure_ascii=False, indent=2)
+
+        local_response = {
+            "status": "success",
+            "message": "Data saved/updated to local ranking_data.json",
+            "cheatInfo": reason if is_cheat else ""
+        }
+    except Exception as e:
+        print(f"Error saving to local: {e}")
+        local_response = {
+            "status": "error",
+            "message": str(e)
+        }
+
+    # -----------------------------
+    #  (B) 구글 Apps Script 기록
+    # -----------------------------
+    #  finish_game에서는 구글 스크립트에 직접 POST
+    #  (이전의 /save_to_sheet 로직을 그대로 여기서 호출 가능)
+    try:
+        payload_for_sheet = {
+            "company": company,
+            "employeeId": employeeId,
+            "name": name,
+            "totalScore": final_score,
+            "time": datetime.now().isoformat(),
+            "status": status_value
+        }
+        response_sheet = fetch_from_google_script(payload=payload_for_sheet)
+        sheet_response = response_sheet
+    except Exception as e:
+        print(f"Error saving to Google Sheet: {e}")
+        sheet_response = {
+            "status": "error",
+            "message": str(e)
+        }
+
+    # 원한다면 session pop
     # session.pop("round_scores", None)
     # session.pop("game_start_time", None)
 
     return jsonify({
-        "status": "ok",
-        "final_score": final_score
-    })
+        "finalScore": final_score,
+        "localResult": local_response,
+        "sheetResult": sheet_response
+    }), 200
 
 
 
