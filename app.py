@@ -101,17 +101,19 @@ def analyze_pitch_and_volume(audio_path):
 # -----------------------------------------
 @app.route('/start_game', methods=['POST'])
 def start_game():
-    """
-    부정행위 방지를 위해 게임 시작 시각을 세션에 기록.
-    프론트엔드에서 게임 시작할 때 호출 (예: 마이크 테스트 통과 직후)
-    """
-    session["game_start_time"] = time.time()  # 현재 유닉스 타임스탬프(초 단위)
+    # 기존: 세션에 시작 시간 기록
+    session["game_start_time"] = time.time()
+
+    # 추가: 임시 난수 토큰 생성 & 세션에 저장
+    token = uuid.uuid4().hex
+    session["auth_token"] = token
+
     return jsonify({
         "status": "ok",
         "message": "Game started",
-        "serverTime": session["game_start_time"]
+        "serverTime": session["game_start_time"],
+        "authToken": token  # ← 클라이언트에게도 보내줌
     })
-
 
 @app.route('/get_game_sentence', methods=['GET'])
 def get_game_sentence():
@@ -123,7 +125,13 @@ def get_game_sentence():
 
 @app.route('/process', methods=['POST'])
 def process():
-    data = request.get_json()
+    data = request.get_json() or {}
+    
+    # 1) authToken 검사
+    client_token = data.get("authToken", "")
+    if "auth_token" not in session or session["auth_token"] != client_token:
+        return jsonify({"error": "Unauthorized"}), 401
+    
     audio_data = data.get('audio')
     reference_sentence = data.get('reference')
 
@@ -367,8 +375,13 @@ def finish_game():
     # 1) 부정행위(시간) 체크
     is_cheat, reason = check_cheating_time(threshold=30)
     
-    # 2) 요청 데이터 파싱 (회사, 사번, 이름 등)
+    # 2) 요청 데이터 파싱 (회사, 사번, 이름 등)    
     data = request.get_json() or {}
+    # 토큰 검사
+    client_token = data.get("authToken", "")
+    if "auth_token" not in session or session["auth_token"] != client_token:
+        return jsonify({"error": "Unauthorized"}), 401
+    
     if not data:
         return jsonify({"error": "No data provided"}), 400
     
