@@ -171,7 +171,7 @@ def process():
             "Whisper": whisper_score,
             "Pitch": avg_pitch,
             "Volume": avg_volume,
-            "Total": total_score
+            "RoundScore": total_score
         },
         "stt_text": whisper_text,
         "audio_path": f"/static/audio/{audio_filename}"
