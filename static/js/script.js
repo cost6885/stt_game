@@ -599,6 +599,7 @@ function sendToGoogleSheets() {
 function displayRankings() {
     const rankingBoard = document.getElementById('ranking-board-container');
     const rankingList = document.getElementById('ranking-list');
+    const rankmoreBtn = document.getElementById('rankmore');
 
     // "로딩 중" 메시지를 rankingList에 표시
     rankingList.innerHTML = '<div>로딩 중...</div>';
@@ -607,25 +608,74 @@ function displayRankings() {
     fetch('/get_rankings?timestamp=' + Date.now())
         .then(response => response.json())
         .then(data => {
+            // 1) 데이터 검사
             if (!data.rankings || data.rankings.length === 0) {
                 throw new Error("No rankings available from server");
             }
 
-            // 기존 내용 지우기
+            // 2) 부정행위자 제외
+            let filteredRankings = data.rankings.filter(entry => entry.status !== "부정행위");
+            if (filteredRankings.length === 0) {
+                // 필터 후에 아무도 없으면 에러로 처리
+                throw new Error("No valid (non-cheater) rankings available");
+            }
+
+            // 3) 정렬 (우선 참여횟수 desc, 그 다음 도달시간 asc, 그 다음 점수 desc)
+            filteredRankings.sort((a, b) => {
+                // participationCount 내림차순
+                if (b.participationCount !== a.participationCount) {
+                    return b.participationCount - a.participationCount;
+                }
+                // responseTime 오름차순
+                const aTime = new Date(a.responseTime).getTime();
+                const bTime = new Date(b.responseTime).getTime();
+                if (aTime !== bTime) {
+                    return aTime - bTime;
+                }
+                // score 내림차순
+                return b.score - a.score;
+            });
+
+            // 4) 기존 내용 지우기
             rankingList.innerHTML = '';
 
-            // 새로운 랭킹 데이터를 추가
-            data.rankings.forEach((entry) => {
+            // 5) 표시
+            filteredRankings.forEach((entry, index) => {
                 const rankItem = document.createElement('div');
-                rankItem.textContent = `${entry.rank}등: ${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
+
+                // 표시할 텍스트
+                const rankText = `${entry.name} (${entry.company}) - 점수: ${entry.score}, 참여: ${entry.participationCount}회`;
+
+                // 1등, 2등, 3등, 그 외 구분
+                if (index === 0) {
+                    rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: gold;">1등🥇 ${rankText}</span>`;
+                } else if (index === 1) {
+                    rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: silver;">2등🥈 ${rankText}</span>`;
+                } else if (index === 2) {
+                    rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: bronze;">3등🥉 ${rankText}</span>`;
+                } else {
+                    rankItem.innerHTML = `<span class="name">${index + 1}등🙄 ${rankText}</span>`;
+                }
+
                 rankingList.appendChild(rankItem);
             });
+
+            // 6) rankmore 버튼 표시 (정상 데이터 로드 후)
+            if (rankmoreBtn) {
+                rankmoreBtn.style.display = 'block';
+            }
         })
         .catch(error => {
             console.error('랭킹 데이터를 가져오는 중 오류 발생:', error);
             rankingList.innerHTML = '<div>랭킹 데이터를 불러올 수 없습니다.</div>';
+
+            // rankmore 버튼 숨기기 (에러 시에는 불필요하다고 가정)
+            if (rankmoreBtn) {
+                rankmoreBtn.style.display = 'none';
+            }
         });
 }
+
 
 
 function rankmore() {
