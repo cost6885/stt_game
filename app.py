@@ -58,6 +58,39 @@ def index():
     return render_template('index.html', test_sentence=test_sentence)
 
 
+import librosa
+import numpy as np
+from pydub import AudioSegment
+
+def analyze_pitch_and_volume(audio_path):
+    """
+    음성 파일에서 성조와 음량을 분석하는 함수
+    """
+    try:
+        # librosa로 음성 로드
+        y, sr = librosa.load(audio_path, sr=None)
+        
+        # 성조 분석 (Fundamental Frequency)
+        pitches, magnitudes = librosa.piptrack(y=y, sr=sr)
+        pitch_values = [pitches[f, t] for t in range(pitches.shape[1]) for f in range(pitches.shape[0]) if pitches[f, t] > 0]
+        avg_pitch = np.mean(pitch_values) if pitch_values else 0
+
+        # 음량 분석 (RMS 에너지)
+        rms = librosa.feature.rms(y=y)
+        avg_volume = np.mean(rms) if rms.size > 0 else 0
+
+        return avg_pitch, avg_volume
+    except Exception as e:
+        print(f"Error in analyze_pitch_and_volume: {e}")
+        return 0, 0
+
+
+
+
+
+
+
+
 # -----------------------------------------
 #  게임 시작 시각 기록 → 세션에 저장
 # -----------------------------------------
@@ -113,29 +146,28 @@ def process():
     if whisper_text is None:
         return jsonify({"error": "Transcription failed"}), 500
 
-    # Compare
+    # Compare text
     whisper_score = compare_sentences(reference_sentence, whisper_text)
 
-    scores = {
-        "Whisper": whisper_score
-    }
+    # Analyze pitch and volume
+    avg_pitch, avg_volume = analyze_pitch_and_volume(audio_path)
 
-    # 점수 등급 (참고)
-    difficulty = ""
-    if whisper_score > 90:
-        difficulty = "초급"
-    elif 70 < whisper_score <= 90:
-        difficulty = "보통"
-    else:
-        difficulty = "고급"
+    # 종합 점수 계산 (예시: 텍스트 유사도 70%, 성조 20%, 음량 10%)
+    total_score = (0.7 * whisper_score) + (0.2 * avg_pitch / 300) + (0.1 * avg_volume / 0.1)
+    total_score = min(max(total_score, 0), 100)  # 점수는 0~100 사이로 제한
 
     response = {
-        "scores": scores,
-        "difficulty": difficulty,
+        "scores": {
+            "Whisper": whisper_score,
+            "Pitch": avg_pitch,
+            "Volume": avg_volume,
+            "Total": total_score
+        },
         "stt_text": whisper_text,
         "audio_path": f"/static/audio/{audio_filename}"
     }
     return jsonify(response)
+
 
 
 # -----------------------------------------
@@ -307,6 +339,10 @@ def test_local_rankings():
     except Exception as e:
         print(f"Error loading local file: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+
+
 
 
 if __name__ == '__main__':
