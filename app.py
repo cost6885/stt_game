@@ -123,43 +123,70 @@ def process():
 
 @app.route('/save_to_sheet', methods=['POST'])
 def save_to_sheet():
-    """Google Apps Script에 데이터를 저장 + local ranking_data.json 동기화"""
+    """Google Apps Script에 데이터를 저장하는 라우트"""
     try:
         data = request.get_json()
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
-        # 1) Apps Script로 POST
         response = fetch_from_google_script(payload=data)  # POST 요청
-        # response는 JSON 형태를 반환한다고 가정
-
-        # 2) 구글 스크립트에 저장 성공 시, 다시 최신 랭킹 불러오기
-        if response and response.get("status") == "success":
-            # 최신 랭킹 데이터 가져오기
-            latest_rankings = fetch_from_google_script("?action=getRankings")
-            # latest_rankings는 { "rankings": [...] } 형태라고 가정
-
-            # 3) ranking_data.json 파일에 덮어쓰기
-            local_file_path = "ranking_data.json"
-            with open(local_file_path, "w", encoding="utf-8") as f:
-                json.dump(latest_rankings, f, ensure_ascii=False, indent=2)
-                # ensure_ascii=False 로 해야 한글이 깨지지 않고 저장
-                # indent=2 -> 보기 좋게 들여쓰기
-
-            return jsonify({
-                "status": "success",
-                "message": "Data saved successfully and local ranking_data.json updated!",
-                "rankingUpdate": latest_rankings
-            }), 200
-        else:
-            return jsonify({
-                "error": "Apps Script post failed or returned error",
-                "details": response
-            }), 500
-
+        return jsonify(response), 200
     except Exception as e:
         print(f"Error in save_to_sheet: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/save_to_local', methods=['POST'])
+def save_to_local():
+    """
+    1) 클라이언트에서 보내 준 JSON을 받아 
+    2) ranking_data.json에 추가(또는 갱신) 저장
+    3) JSON 응답 반환
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"status": "error", "message": "No data provided"}), 400
+
+        # (예시) 기존 ranking_data.json 로드
+        local_file_path = "ranking_data.json"
+        try:
+            with open(local_file_path, "r", encoding="utf-8") as f:
+                local_data = json.load(f)
+        except FileNotFoundError:
+            # 파일이 아예 없으면 초기 구조 생성
+            local_data = { "rankings": [] }
+
+        # local_data는 { "rankings": [...] } 형태라 가정
+        # 만약 다른 구조라면, 추가 로직으로 맞춰주어야 함
+        if "rankings" not in local_data:
+            local_data["rankings"] = []
+
+        # 예: 구글 시트에 보내는 데이터와 동일하게 company, employeeId, name, totalScore, time 등
+        #     응답시간(new Date().toLocaleString()) 등은 Python 쪽에서 생성 가능
+        new_entry = {
+            "rank": 0,  # 임시(실제 순위는 /get_rankings 시점에 재계산 가능)
+            "company": data.get("company", ""),
+            "employeeId": data.get("employeeId", ""),
+            "name": data.get("name", ""),
+            "score": float(data.get("totalScore", 0.0)),
+            "participationCount": 1,  # 임시(원하면 로직으로 중복 계산)
+            "responseTime": datetime.now().strftime("%Y.%m.%d %p %I:%M:%S")  
+        }
+
+        # rankings 배열에 푸시
+        local_data["rankings"].append(new_entry)
+
+        # 파일에 다시 저장(덮어쓰기)
+        with open(local_file_path, "w", encoding="utf-8") as f:
+            json.dump(local_data, f, ensure_ascii=False, indent=2)
+
+        return jsonify({"status": "success", "message": "Data saved to local ranking_data.json"}), 200
+
+    except Exception as e:
+        print(f"Error in save_to_local: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 
 
