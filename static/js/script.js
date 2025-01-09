@@ -182,6 +182,7 @@ function sendAudioForTest(audioData, referenceSentence) {
     });
 }
 
+
 /** 게임 시작 시퀀스 */
 function startGameSequence() {
     if (!micTestPassed) {
@@ -189,20 +190,35 @@ function startGameSequence() {
         return;
     }
 
-    // 타이머 시작 시간 기록
-    gameStartTime = Date.now();
-    
-    gameStartPage.style.display = 'flex';
-    setTimeout(() => {
-        gameStartPage.style.display = 'none';
-        currentRound = 1;
-        totalScore = 0;
-        usedSentences = []; // 새로운 게임 시 usedSentences 초기화
-        showPage(roundPage);
-        startRound(currentRound);
-    }, 2000);
-}
+    // (1) 서버에 '/start_game' POST → 세션에 game_start_time 기록
+    fetch('/start_game', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            console.log("서버에서 게임 시작 시간 설정 완료:", data);
 
+            // (2) 클라이언트 쪽에서도 로컬 gameStartTime 저장
+            gameStartTime = Date.now();
+
+            // (3) 이후 UI 전환 (로딩 모션 2초 노출 등)
+            gameStartPage.style.display = 'flex';
+            setTimeout(() => {
+                gameStartPage.style.display = 'none';
+                currentRound = 1;
+                // roundScores 배열 비우기 (새 게임 시작이므로)
+                roundScores = [];  
+                usedSentences = []; // 중복 방지 리스트 초기화
+
+                // 라운드 페이지로 이동
+                showPage(roundPage);
+                startRound(currentRound);
+            }, 2000);
+
+        })
+        .catch(err => {
+            console.error("'/start_game' 호출 오류:", err);
+            micStatus.innerText = "서버에 게임 시작을 알리는 중 오류 발생 (네트워크 상태 확인)";
+        });
+}
 
 /** 라운드를 진행했는지 확인 */
 function checkRoundsCompleted() {
