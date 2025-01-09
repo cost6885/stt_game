@@ -79,7 +79,10 @@ def analyze_pitch_and_volume(audio_path):
         rms = librosa.feature.rms(y=y)
         avg_volume = np.mean(rms) if rms.size > 0 else 0
 
+        if avg_pitch == 0 or avg_volume == 0:
+            print(f"주의: 성조({avg_pitch}) 또는 음량({avg_volume}) 계산 결과가 0입니다. 파일: {audio_path}")
         return avg_pitch, avg_volume
+        
     except Exception as e:
         print(f"Error in analyze_pitch_and_volume: {e}")
         return 0, 0
