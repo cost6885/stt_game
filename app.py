@@ -357,9 +357,10 @@ def test_local_rankings():
 def finish_game():
     """
     1) 부정행위 체크
-    2) 세션에 저장된 round_scores로 최종점수 계산
-    3) 로컬 ranking_data.json 저장 + 구글 Apps Script에 POST
-    4) 응답 반환
+    2) '모든 라운드 진행 완료' 여부 체크
+    3) 세션에 저장된 round_scores로 최종점수 계산
+    4) 로컬 ranking_data.json 저장 + 구글 Apps Script에 POST
+    5) 응답 반환
     """
     # 1) 부정행위(시간) 체크
     is_cheat, reason = check_cheating_time(threshold=30)
@@ -374,15 +375,24 @@ def finish_game():
     name = data.get("name", "")
 
     # 세션에 round_scores가 있는지 확인
-    if "round_scores" not in session or len(session["round_scores"]) == 0:
-        return jsonify({"error": "No round scores found."}), 400
+    if "round_scores" not in session:
+        return jsonify({"error": "No round scores found in session."}), 400
 
-    # 최종점수(평균)
+    # "이미 라운드 다 끝냈는지"를 체크
+    # 예: 총 3라운드라고 가정, round_scores 길이가 3 미만이면 미완료
+    if len(session["round_scores"]) < TOTAL_ROUNDS:
+        return jsonify({
+            "error": "Not all rounds are completed yet.",
+            "roundsCompleted": len(session["round_scores"]),
+            "requiredRounds": TOTAL_ROUNDS
+        }), 400
+
+    # 이제 실제로 최종 점수 계산
     round_scores = session["round_scores"]
     avg_score = sum(round_scores) / len(round_scores)
     final_score = round(avg_score)
 
-    # 상태값
+    # 상태값 (부정행위 or 정상)
     if is_cheat:
         status_value = "부정행위"
     else:
@@ -448,8 +458,6 @@ def finish_game():
     # -----------------------------
     #  (B) 구글 Apps Script 기록
     # -----------------------------
-    #  finish_game에서는 구글 스크립트에 직접 POST
-    #  (이전의 /save_to_sheet 로직을 그대로 여기서 호출 가능)
     try:
         payload_for_sheet = {
             "company": company,
@@ -468,7 +476,7 @@ def finish_game():
             "message": str(e)
         }
 
-    # 원한다면 session pop
+    # 원한다면 여기서 session pop
     # session.pop("round_scores", None)
     # session.pop("game_start_time", None)
 
@@ -477,7 +485,6 @@ def finish_game():
         "localResult": local_response,
         "sheetResult": sheet_response
     }), 200
-
 
 
 
