@@ -382,25 +382,24 @@ function sendAudio(audioData, referenceSentence) {
             return;
         }
         const { scores, stt_text, audio_path } = data;
-        if (!scores || typeof scores.Whisper !== 'number' || !stt_text) {
+        if (!scores || typeof scores.Total !== 'number' || !stt_text) {
             console.warn('STT 결과 데이터 이상');
             handleTranscriptionFail();
             return;
         }
 
-        // totalScore에 바로 반영
-        totalScore += scores.Whisper; // Whisper 점수를 누적
-
+        totalScore += scores.Total;  // 누적 점수에 Total 사용
         console.log(`라운드 ${currentRound} 누적 점수: ${Math.round(totalScore)}점`);
 
         // 라운드 피드백
-        showRoundFeedback(referenceSentence, stt_text, totalScore, audio_path); // totalScore를 전달
+        showRoundFeedback(referenceSentence, stt_text, scores.Total, audio_path); // Total 전달
     })
     .catch(error => {
         console.error('STT 변환 오류:', error);
         handleTranscriptionFail();
     });
 }
+
 
 
 
@@ -494,13 +493,14 @@ function handleNextRound() {
 }
 
 
-/** 오류 발생 시 0점 처리 & 피드백 페이지 표시 (원문=lastReference, 인식="", 점수=0) */
+/** 오류 발생 시 0점 처리 & 피드백 페이지 표시 */
 function handleTranscriptionFail() {
     console.warn("Transcription failed or no speech -> 0점 처리.");
     
-    // 누적 점수는 변경하지 않고 0점 피드백 전달
-    showRoundFeedback(lastReference, "", totalScore, "");
+    // 피드백에 0점 표시
+    showRoundFeedback(lastReference, "", 0, "");
 }
+
 
 
 /** 게임 종료 → formContainer로 이동하여 최종 점수 제출 */
