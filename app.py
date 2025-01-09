@@ -171,7 +171,7 @@ def process():
             "Whisper": whisper_score,
             "Pitch": avg_pitch,
             "Volume": avg_volume,
-            "RoundScore": total_score  # ← 'Total' 대신 'RoundScore' 등 명시적으로 바꿔도 OK
+            "Total": total_score
         },
         "stt_text": whisper_text,
         "audio_path": f"/static/audio/{audio_filename}"
