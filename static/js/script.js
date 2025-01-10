@@ -440,10 +440,10 @@ function showRoundFeedback(reference, recognized, roundScore, audioPath) {
 
     let feedbackClass = "bad";
     let feedbackText = "BAD";
-    if (roundScore > 90) {
+    if (roundScore > 70) {
         feedbackClass = "good";
         feedbackText = "GOOD";
-    } else if (roundScore > 70) {
+    } else if (roundScore > 50) {
         feedbackClass = "normal";
         feedbackText = "NORMAL";
     }
