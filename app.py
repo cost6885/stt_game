@@ -16,6 +16,11 @@ import requests
 load_dotenv()
 
 app = Flask(__name__)
+
+# Flask 세션 쿠키 설정
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS 환경에서만 작동
+
 app.secret_key = "ANY_RANDOM_SECRET_KEY_FOR_SESSION"  # 세션을 사용하려면 반드시 secret_key 설정 (임의 문자열)
 
 TOTAL_ROUNDS = 3
@@ -165,14 +170,14 @@ def process():
     # Analyze pitch and volume
     avg_pitch, avg_volume = analyze_pitch_and_volume(audio_path)
 
-    # 종합 점수 계산 (예시: 텍스트 유사도 70%, 성조 20%, 음량 10%)
-    total_score = (0.7 * whisper_score) + (0.2 * avg_pitch / 300) + (0.1 * avg_volume / 0.1)
+    # 종합 점수 계산 (예시: 텍스트 유사도 80%, 성조 10%, 음량 10%)
+    total_score = (0.8 * whisper_score) + (0.1 * avg_pitch / 300) + (0.1 * avg_volume / 0.1)
     total_score = min(max(total_score, 0), 100)  # 점수는 0~100 사이로 제한
 
     # ★ 세션에 round_scores 배열이 없다면 초기화
     if "round_scores" not in session:
         session["round_scores"] = []
-
+    
     # ★ 이번 라운드 점수를 세션에 추가
     session["round_scores"].append(total_score)
 
@@ -509,9 +514,12 @@ def finish_game():
 
 @app.route('/mic_test', methods=['POST'])
 def mic_test():
+    """
+    마이크 테스트 전용 라우트.
+    - authToken 없이
+    - 세션 round_scores 등에 기록하지 않음
+    """
     data = request.get_json() or {}
-
-    # 마이크 테스트: authToken 검사 없음
     audio_data = data.get('audio')
     reference_sentence = data.get('reference')
 
@@ -525,35 +533,32 @@ def mic_test():
         print(f"Audio Decoding Error: {e}")
         return jsonify({"error": "Invalid audio data"}), 400
 
-    # 2) 저장, STT
+    # 2) 파일 저장
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    audio_filename = f"audio_{uuid.uuid4().hex}.wav"
+    audio_filename = f"micTest_{uuid.uuid4().hex}.wav"
     audio_path = os.path.join("static", "audio", audio_filename)
 
     os.makedirs(os.path.dirname(audio_path), exist_ok=True)
     with open(audio_path, "wb") as f:
         f.write(audio_bytes)
 
+    # 3) STT
     whisper_text = transcribe_with_whisper(audio_path)
     if whisper_text is None:
         return jsonify({"error": "Transcription failed"}), 500
 
-    # 3) 텍스트 유사도 (마이크 테스트에서는 점수만 대략 보거나, 단순히 whisper_score만 응답)
+    # 4) (필요시) 유사도 비교
     whisper_score = compare_sentences(reference_sentence, whisper_text)
 
-    # 4) (원하면) 간단히 avg_pitch, avg_volume = analyze_pitch_and_volume(...) 수행 가능
-    #    다만 세션엔 기록하지 않음
-
-    # 5) 응답
-    response = {
+    # 5) 응답 (세션엔 기록X)
+    return jsonify({
         "scores": {
             "Whisper": whisper_score,
-            # 굳이 RoundScore / session 기록 안 함
+            # "RoundScore": ~ 기록하지 않음
         },
         "stt_text": whisper_text,
         "audio_path": f"/static/audio/{audio_filename}"
-    }
-    return jsonify(response)
+    })
 
 
 
