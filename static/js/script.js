@@ -136,13 +136,12 @@ function startMicTest(stream) {
 
 /** 마이크 테스트 음성 전송 */
 function sendAudioForTest(audioData, referenceSentence) {
-    fetch('/process', {
+    fetch('/mic_test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             audio: audioData,
-            reference: referenceSentence,
-            authToken: window.authToken  // ← 추가
+            reference: referenceSentence,            
         })
     })
     .then(response => response.json())
