@@ -17,9 +17,9 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Flask 세션 쿠키 설정
-app.config['SESSION_COOKIE_SAMESITE'] = 'None'
-app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS 환경에서만 작동
+# # Flask 세션 쿠키 설정
+# app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = False  # HTTPS 환경에서만 작동할거면 true, 개발환경에서는 false
 
 app.secret_key = "ANY_RANDOM_SECRET_KEY_FOR_SESSION"  # 세션을 사용하려면 반드시 secret_key 설정 (임의 문자열)
 
