@@ -555,7 +555,8 @@ function sendToGoogleSheets() {
                 company,
                 employeeId,
                 name,
-                authToken: window.authToken
+                authToken: window.authToken,
+                roundScores: roundScores  // ← 추가
               })
     })
     .then(res => res.json())
