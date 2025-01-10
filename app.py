@@ -491,6 +491,10 @@ def finish_game():
             "message": str(e)
         }
 
+    # (B) finish_game 성공 시 → 토큰 폐기
+    session.pop("auth_token", None)
+    session.pop("auth_token_expiry", None)
+    
     # 원한다면 여기서 session pop
     session.pop("round_scores", None)
     session.pop("game_start_time", None)
