@@ -496,9 +496,20 @@ function endGame() {
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     scoreImageWrapper.style.display = "none";
 
+    // ★ 추가: 클라이언트 roundScores를 평균내어 #final-score에 표시 (표면적 점수)
+    if (roundScores.length > 0) {
+      const sum = roundScores.reduce((a, b) => a + b, 0);
+      const avg = sum / roundScores.length;
+      const displayScore = Math.round(avg);
+      document.getElementById('final-score').innerText = displayScore;
+    } else {
+      document.getElementById('final-score').innerText = '0';
+    }
+
     // 2) 회사/사번/이름 입력 폼 표시
     showFormContainer();
 }
+
 
 /** 원문 vs 인식문 차이 하이라이트 */
 function highlightDifferences(original, recognized) {
