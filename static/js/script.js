@@ -190,6 +190,9 @@ function startGameSequence() {
         .then(data => {
             console.log("서버에서 게임 시작 시간 설정 완료:", data);
 
+            // 추가: data.authToken 수신 → 전역 변수나 어디든 저장
+            window.authToken = data.authToken;
+
             gameStartTime = Date.now();
 
             // 로딩(게임시작) 페이지 2초 노출
@@ -369,7 +372,11 @@ function sendAudio(audioData, referenceSentence) {
   fetch('/process', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ audio: audioData, reference: referenceSentence })
+        body: JSON.stringify({
+        audio: audioData,
+        reference: referenceSentence,
+        authToken: window.authToken  // ← 추가
+    })
   })
     .then(response => response.json())
     .then(data => {
@@ -530,7 +537,12 @@ function sendToGoogleSheets() {
     fetch('/finish_game', {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ company, employeeId, name })
+          body: JSON.stringify({
+                company,
+                employeeId,
+                name,
+                authToken: window.authToken
+              })
     })
     .then(res => res.json())
     .then(data => {
