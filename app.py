@@ -507,5 +507,56 @@ def finish_game():
 
 
 
+@app.route('/mic_test', methods=['POST'])
+def mic_test():
+    data = request.get_json() or {}
+
+    # 마이크 테스트: authToken 검사 없음
+    audio_data = data.get('audio')
+    reference_sentence = data.get('reference')
+
+    if not audio_data or not reference_sentence:
+        return jsonify({"error": "Invalid data"}), 400
+
+    # 1) base64 디코딩
+    try:
+        audio_bytes = base64.b64decode(audio_data.split(',')[1])
+    except Exception as e:
+        print(f"Audio Decoding Error: {e}")
+        return jsonify({"error": "Invalid audio data"}), 400
+
+    # 2) 저장, STT
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    audio_filename = f"audio_{uuid.uuid4().hex}.wav"
+    audio_path = os.path.join("static", "audio", audio_filename)
+
+    os.makedirs(os.path.dirname(audio_path), exist_ok=True)
+    with open(audio_path, "wb") as f:
+        f.write(audio_bytes)
+
+    whisper_text = transcribe_with_whisper(audio_path)
+    if whisper_text is None:
+        return jsonify({"error": "Transcription failed"}), 500
+
+    # 3) 텍스트 유사도 (마이크 테스트에서는 점수만 대략 보거나, 단순히 whisper_score만 응답)
+    whisper_score = compare_sentences(reference_sentence, whisper_text)
+
+    # 4) (원하면) 간단히 avg_pitch, avg_volume = analyze_pitch_and_volume(...) 수행 가능
+    #    다만 세션엔 기록하지 않음
+
+    # 5) 응답
+    response = {
+        "scores": {
+            "Whisper": whisper_score,
+            # 굳이 RoundScore / session 기록 안 함
+        },
+        "stt_text": whisper_text,
+        "audio_path": f"/static/audio/{audio_filename}"
+    }
+    return jsonify(response)
+
+
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=os.getenv('FLASK_ENV') == 'development')
