@@ -174,13 +174,6 @@ def process():
     total_score = (0.8 * whisper_score) + (0.1 * avg_pitch / 300) + (0.1 * avg_volume / 0.1)
     total_score = min(max(total_score, 0), 100)  # 점수는 0~100 사이로 제한
 
-    # ★ 세션에 round_scores 배열이 없다면 초기화
-    if "round_scores" not in session:
-        session["round_scores"] = []
-    
-    # ★ 이번 라운드 점수를 세션에 추가
-    session["round_scores"].append(total_score)
-
     response = {
         "scores": {
             "Whisper": whisper_score,
@@ -371,56 +364,39 @@ def test_local_rankings():
 @app.route('/finish_game', methods=['POST'])
 def finish_game():
     """
-    1) 부정행위 체크
-    2) '모든 라운드 진행 완료' 여부 체크
-    3) 세션에 저장된 round_scores로 최종점수 계산
-    4) 로컬 ranking_data.json 저장 + 구글 Apps Script에 POST
-    5) 응답 반환
+    1) 부정행위 체크 (세션 시간 or authToken)
+    2) 프론트엔드에서 전달받은 roundScores[] 로 최종 평균 계산
+    3) 랭킹/로컬 파일/구글 시트 저장
+    4) 응답
     """
-    # 1) 부정행위(시간) 체크
+    # 간단한 세션 시간(부정행위) 체크
     is_cheat, reason = check_cheating_time(threshold=30)
-    
-    # 2) 요청 데이터 파싱 (회사, 사번, 이름 등)    
+
     data = request.get_json() or {}
-    # 토큰 검사
     client_token = data.get("authToken", "")
     if "auth_token" not in session or session["auth_token"] != client_token:
         return jsonify({"error": "Unauthorized"}), 401
-    
+
     if not data:
         return jsonify({"error": "No data provided"}), 400
-    
+
     company = data.get("company", "")
     employeeId = data.get("employeeId", "")
     name = data.get("name", "")
+    # ★ 클라이언트에서 roundScores 배열 통째로 보내도록
+    round_scores = data.get("roundScores", [])
 
-    # 세션에 round_scores가 있는지 확인
-    if "round_scores" not in session:
-        return jsonify({"error": "No round scores found in session."}), 400
+    if not isinstance(round_scores, list) or len(round_scores) == 0:
+        return jsonify({"error": "roundScores is empty or invalid"}), 400
 
-    # "이미 라운드 다 끝냈는지"를 체크
-    # 예: 총 3라운드라고 가정, round_scores 길이가 3 미만이면 미완료
-    if len(session["round_scores"]) < TOTAL_ROUNDS:
-        return jsonify({
-            "error": "Not all rounds are completed yet.",
-            "roundsCompleted": len(session["round_scores"]),
-            "requiredRounds": TOTAL_ROUNDS
-        }), 400
-
-    # 이제 실제로 최종 점수 계산
-    round_scores = session["round_scores"]
+    # 2) 최종점수(서버 기준)
     avg_score = sum(round_scores) / len(round_scores)
     final_score = round(avg_score)
 
-    # 상태값 (부정행위 or 정상)
-    if is_cheat:
-        status_value = "부정행위"
-    else:
-        status_value = "정상"
+    # 3) 랭킹 저장 (로컬 + 구글)
+    status_value = "부정행위" if is_cheat else "정상"
 
-    # -----------------------------
-    #  (A) 로컬 ranking_data.json 갱신
-    # -----------------------------
+    # --- (A) save to local
     try:
         local_file_path = "ranking_data.json"
         try:
@@ -428,7 +404,7 @@ def finish_game():
                 local_data = json.load(f)
         except FileNotFoundError:
             local_data = {"rankings": []}
-        
+
         if "rankings" not in local_data:
             local_data["rankings"] = []
 
@@ -439,7 +415,6 @@ def finish_game():
                 break
 
         currentTimeStr = datetime.now().strftime("%Y. M. d %p %I:%M:%S")
-
         if existingEntry:
             oldScore = float(existingEntry.get("score", 0.0))
             existingEntry["score"] = max(oldScore, final_score)
@@ -470,14 +445,9 @@ def finish_game():
         }
     except Exception as e:
         print(f"Error saving to local: {e}")
-        local_response = {
-            "status": "error",
-            "message": str(e)
-        }
+        local_response = {"status": "error", "message": str(e)}
 
-    # -----------------------------
-    #  (B) 구글 Apps Script 기록
-    # -----------------------------
+    # --- (B) save to Google
     try:
         payload_for_sheet = {
             "company": company,
@@ -491,17 +461,12 @@ def finish_game():
         sheet_response = response_sheet
     except Exception as e:
         print(f"Error saving to Google Sheet: {e}")
-        sheet_response = {
-            "status": "error",
-            "message": str(e)
-        }
+        sheet_response = {"status": "error", "message": str(e)}
 
-    # (B) finish_game 성공 시 → 토큰 폐기
+    # 토큰 폐기 (원하면)
     session.pop("auth_token", None)
     session.pop("auth_token_expiry", None)
-    
-    # 원한다면 여기서 session pop
-    session.pop("round_scores", None)
+    # session.pop("round_scores", None)  # 더이상 안 씀
     session.pop("game_start_time", None)
 
     return jsonify({
