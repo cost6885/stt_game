@@ -139,7 +139,11 @@ function sendAudioForTest(audioData, referenceSentence) {
     fetch('/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audio: audioData, reference: referenceSentence })
+        body: JSON.stringify({
+            audio: audioData,
+            reference: referenceSentence,
+            authToken: window.authToken  // ← 추가
+        })
     })
     .then(response => response.json())
     .then(data => {
