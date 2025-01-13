@@ -454,7 +454,7 @@ function showRoundFeedback(reference, recognized, roundScore, audioPath) {
     // 점수 기준에 따라 버튼 설정
     if (roundScore <= 80) { // 80점 이하일 경우
         nextRoundBtn.textContent = "다시하기";
-        nextRoundBtn.onclick = prapare;
+        nextRoundBtn.onclick = handleRoundRetry; // ← 다시하기 핸들러로 변경
     } else {
         updateNextRoundButtonLabel();
         nextRoundBtn.onclick = handleNextRound;
@@ -484,6 +484,25 @@ function handleNextRound() {
         startRound(currentRound);
     }
 }
+
+
+function handleRoundRetry() {
+    // 라운드 피드백 페이지를 닫고
+    roundFeedbackPage.classList.remove('active');
+    
+    // 점수 이미지를 숨기고 (필요시)
+    const scoreImageWrapper = document.getElementById('score-image-wrapper');
+    scoreImageWrapper.style.display = "none";
+
+    // 현재 라운드를 다시 시작
+    showPage(roundPage);
+    startRound(currentRound);
+}
+
+
+
+
+
 
 /** 오류(음성 없는 등) → 0점 처리 */
 function handleTranscriptionFail() {
