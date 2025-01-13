@@ -244,7 +244,7 @@ function startRound(round) {
     gameStatus.innerText = '';
     gameText.classList.add('hidden');
 
-    let countdown = 5;
+    let countdown = 3;
     countdownDisplay.innerText = countdown;
 
     countdownInterval = setInterval(() => {
