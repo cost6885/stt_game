@@ -166,7 +166,7 @@ function sendAudioForTest(audioData, referenceSentence) {
             micTestPassed = true;
             startGameSequence();
         } else {
-            micStatus.innerText = `말을 하셨나요? 점수: ${Math.round(scores.Whisper)}`;
+            micStatus.innerText = `말을 하셨나요? 마이크 상태를 확인 해주세요.`;
             micTestPassed = false;
             // (테스트 편의를 위해 자동 우회하려면 주석 해제)
             // micTestPassed = true;
