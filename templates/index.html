@@ -303,7 +303,7 @@
             font-weight: bold;
             font-size: 1.4em; /* 약간 더 크게 */
             display: inline-block; /* 블록 간격 조정 가능 */
-            margin-top: 10px; /* 위쪽 간격 */
+            margin-top: 0px; /* 위쪽 간격 */
         }
 
         /* 피드백 테이블 스타일 */
@@ -438,11 +438,11 @@
             <p3>게임을 진행하기 위해서는 마이크 사용이 필수입니다.<br>
                 팝업이 뜨면 마이크 연결 허용을 선택해주세요.<br>
             </p3>
+            <button id="test-mic-btn">말하기</button>
             <p id="test-instruction">
-                연결이 완료되셨다면 아래의 문구를 말해주세요.<br>
+                연결이 완료되셨다면 말하기 버튼을 누르시고 아래의 문구를 말해주세요.<br>
                 <span class="highlight">"{{ test_sentence }}"</span>                
             </p>
-            <button id="test-mic-btn">말하기</button>
             <p id="mic-status"></p>
         </div>
 
