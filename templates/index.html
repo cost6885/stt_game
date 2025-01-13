@@ -74,21 +74,22 @@
         p4 {
             margin-bottom: 10px;
             font-size: 12px;
-            color: red; /* 텍스트 색상을 빨간색으로 설정 */
+            color: red; /* 텍스트 색상 빨간색 */
+            display: flex;
+            flex-direction: column; /* 내부 요소를 세로로 배치 */
         }
-
+        
+        .notice-numbers {
+            display: flex;
+            align-items: flex-start; /* 텍스트의 시작 부분을 기준으로 정렬 */
+            margin-left: 20px; /* 본문을 들여쓰기 */
+            text-indent: -20px; /* 번호를 좌측으로 내림 */
+        }
         /* 유의사항 스타일 */
         .notice {
             font-size: 18px; /* 글자 크기 조정 */
             margin-bottom: 15px;
-        }
-        
-        .notice-numbers {
-            display: block; /* 각 번호를 블록으로 처리 */
-            text-indent: -10px; /* 번호를 왼쪽으로 내림 */
-            margin-left: 20px; /* 본문을 오른쪽으로 들여쓰기 */
-            line-height: 1.5; /* 줄 간격 추가 */
-        }
+        }        
 
         /* 마이크 테스트 문구 크게 */
         #test-instruction {
