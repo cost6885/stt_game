@@ -451,7 +451,8 @@ function showRoundFeedback(reference, recognized, roundScore, audioPath) {
     scoreFeedbackTextEl.className = "score-feedback " + feedbackClass;
     scoreFeedbackTextEl.textContent = `${feedbackText} ( ${Math.round(roundScore)}% )`;
 
-    if (roundScore === 0) {
+    // 점수 기준에 따라 버튼 설정
+    if (roundScore <= 80) { // 80점 이하일 경우
         nextRoundBtn.textContent = "다시하기";
         nextRoundBtn.onclick = prapare;
     } else {
