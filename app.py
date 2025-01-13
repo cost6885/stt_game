@@ -65,14 +65,6 @@ def index():
     return render_template('index.html', test_sentence=test_sentence)
 
 
-import librosa
-import numpy as np
-from pydub import AudioSegment
-
-
-
-
-
 # -----------------------------------------
 #  게임 시작 시각 기록 → 세션에 저장
 # -----------------------------------------
@@ -139,23 +131,19 @@ def process():
     # Compare text
     whisper_score = compare_sentences(reference_sentence, whisper_text)
 
-    # 종합 점수 계산 (예시: 텍스트 유사도 80%, 성조 10%, 음량 10%)
+    # ★ Pitch/Volume 제거 → 여기서는 단순히 Whisper 점수만으로 총점 계산
     total_score = whisper_score
     total_score = min(max(total_score, 0), 100)  # 점수는 0~100 사이로 제한
 
     response = {
         "scores": {
             "Whisper": whisper_score,
-            "Pitch": avg_pitch,
-            "Volume": avg_volume,
             "RoundScore": total_score
         },
         "stt_text": whisper_text,
         "audio_path": f"/static/audio/{audio_filename}"
     }
     return jsonify(response)
-
-
 
 
 # -----------------------------------------
@@ -174,6 +162,25 @@ def check_cheating_time(threshold=30):
     if elapsed < threshold:
         return True, f"부정행위 감지: 플레이 경과 {elapsed:.2f}초 (기준 {threshold}초)"
     return False, None
+
+
+def fetch_from_google_script(endpoint: str = "", payload: dict = None):
+    try:
+        script_url = (
+            "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec"
+            + endpoint
+        )
+        if payload:
+            response = requests.post(script_url, json=payload)
+        else:
+            response = requests.get(script_url)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(f"Google Script Error: {response.text}")
+    except Exception as e:
+        raise Exception(f"Error communicating with Google Apps Script: {e}")
 
 
 # -----------------------------------------
@@ -279,25 +286,6 @@ def save_to_local():
     except Exception as e:
         print(f"Error in save_to_local: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
-
-
-def fetch_from_google_script(endpoint: str = "", payload: dict = None):
-    try:
-        script_url = (
-            "https://script.google.com/macros/s/AKfycbz78NlpEqFxpekPfMq_qunSav9LNT6I1S80HlwkGxG1vRgjBM3fj4ajpmjMCUdFGGFmrA/exec"
-            + endpoint
-        )
-        if payload:
-            response = requests.post(script_url, json=payload)
-        else:
-            response = requests.get(script_url)
-
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise Exception(f"Google Script Error: {response.text}")
-    except Exception as e:
-        raise Exception(f"Error communicating with Google Apps Script: {e}")
 
 
 @app.route('/get_rankings', methods=['GET'])
@@ -435,7 +423,6 @@ def finish_game():
     # 토큰 폐기 (원하면)
     session.pop("auth_token", None)
     session.pop("auth_token_expiry", None)
-    # session.pop("round_scores", None)  # 더이상 안 씀
     session.pop("game_start_time", None)
 
     return jsonify({
@@ -443,7 +430,6 @@ def finish_game():
         "localResult": local_response,
         "sheetResult": sheet_response
     }), 200
-
 
 
 @app.route('/mic_test', methods=['POST'])
@@ -487,14 +473,11 @@ def mic_test():
     # 5) 응답 (세션엔 기록X)
     return jsonify({
         "scores": {
-            "Whisper": whisper_score,
-            # "RoundScore": ~ 기록하지 않음
+            "Whisper": whisper_score
         },
         "stt_text": whisper_text,
         "audio_path": f"/static/audio/{audio_filename}"
     })
-
-
 
 
 if __name__ == '__main__':
