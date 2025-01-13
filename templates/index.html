@@ -132,6 +132,29 @@
             transform: translateY(-2px);
         }
 
+
+        /* "처음으로" 버튼 스타일 (레이어 분리) */
+        .back-to-home-btn {
+            position: absolute;
+            top: 20px; /* 컨테이너 내부에서 위쪽 여백 */
+            right: 20px; /* 컨테이너 내부에서 오른쪽 여백 */
+            z-index: 999; /* 다른 요소 위에 표시 */
+            padding: 10px 20px;
+            font-size: 15px;
+            background-color: black;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        
+        .back-to-home-btn:hover {
+            background-color: #333;
+            transform: translateY(-2px);
+        }
+
+        
         /* 카운트다운 */
         #countdown {
             font-size: 80px;
@@ -496,7 +519,7 @@
 
         <!-- Round Feedback Page -->
         <div id="round-feedback-page" class="page">
-            <button class="back-to-home-btn" onclick="prapare()">처음으로</button>
+            <<button class="back-to-home-btn" onclick="prapare()">처음으로</button>
             
             <h4>라운드 결과</h4>
             <div class="feedback-audio">                
