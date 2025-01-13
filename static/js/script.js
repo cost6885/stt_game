@@ -416,7 +416,7 @@ function getScoreImage(score) {
     if (score === 0) return "ya.gif";
     else if (score > 0 && score <= 10) return "jjugul.gif";
     else if (score > 10 && score <= 20) return "myom.gif";
-    else if (score > 20 && score <= 30) return "showr.gif";
+    else if (score > 20 && score <= 30) return "shower.gif";
     else if (score > 30 && score <= 40) return "whatdo.gif";
     else if (score > 40 && score <= 60) return "youcandoit.gif";
     else if (score > 60 && score <= 70) return "thismakes.gif";
