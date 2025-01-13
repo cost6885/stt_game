@@ -41,9 +41,26 @@ game_sentences = sentences_data.get("game_sentences", [])
 def generate_sentence(sentence_list):
     return random.choice(sentence_list) if sentence_list else ""
 
+
+
+
+def normalize_text(txt):
+    import re
+    # 소문자 변환
+    lowered = txt.lower()
+    # 구두점 제거 (영문/한글 자모 제외)
+    lowered = re.sub(r"[^\w가-힣\s]", "", lowered)
+    # 사전 치환
+    for standard, variants in SYNONYM_MAP.items():
+        for v in variants:
+            lowered = lowered.replace(v, standard)
+    return lowered.strip()
+
 def compare_sentences(reference, user_input):
-    matcher = SequenceMatcher(None, reference, user_input)
-    return matcher.ratio() * 100  # Return similarity percentage
+    ref_norm = normalize_text(reference)
+    user_norm = normalize_text(user_input)
+    matcher = SequenceMatcher(None, ref_norm, user_norm)
+    return matcher.ratio() * 100
 
 def transcribe_with_whisper(audio_path):
     try:
