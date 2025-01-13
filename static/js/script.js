@@ -626,7 +626,8 @@ function displayRankings() {
             const topFive = filteredRankings.slice(0, 5);
             topFive.forEach((entry, index) => {
                 const rankItem = document.createElement('div');
-                const rankText = `${entry.name} (${entry.company}) - 최고점수: ${entry.score}, 참여: ${entry.participationCount}회`;
+                const displayScore = Math.min(entry.score, 100); // 최고점수를 100으로 제한
+                const rankText = `${entry.name} (${entry.company}) - 참여: ${entry.participationCount}회(최고점수: ${displayScore})`;
 
                 if (index === 0) {
                     rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: rgba(0,0,0,1);">1등🥇 ${rankText}</span>`;
@@ -656,6 +657,7 @@ function displayRankings() {
             }
         });
 }
+
 
 /** rankmore → 전체 랭킹 팝업 */
 function rankmore() {
@@ -687,14 +689,22 @@ function rankmore() {
                 .rank-entry {
                     margin: 10px 0; font-size: 16px; text-align: left;
                 }
+                .ranking-info {
+                    font-size: 14px; /* 전체 랭킹 제목보다 작게 설정 */
+                    color: #666; /* 안내 문구를 흐릿한 회색으로 */
+                    margin-bottom: 10px; /* 제목과 간격 추가 */
+                }
             </style>
         </head>
         <body>
+            <div class="ranking-info">랭킹은 참여횟수를 기준으로 하며, 참여횟수가 동일한 경우 먼저 참여한 순서로 선정됩니다.</div>
             <h2>🏆 전체 랭킹 🏆</h2>
             <div id="popup-ranking-board">불러오는 중...</div>
+            <div class="ranking-info">부정행위를 통한 참여 시 상품지급이 제한됩니다.</div>
         </body>
         </html>
     `);
+
 
     const popupDoc = popup.document;
     fetch('/get_rankings?all=true')
