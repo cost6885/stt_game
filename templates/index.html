@@ -53,6 +53,9 @@
             margin-bottom: 10px;
              font-size: 70px;
         }
+        h5 {          
+             font-size: 70px;
+        }
         
         p {
             margin-bottom: 15px;
@@ -66,6 +69,17 @@
             margin-top: 20px; /* 위 문장과의 간격 추가 */
             margin-bottom: 15px;
             font-size: 15px;
+        }
+
+        /* 유의사항 스타일 추가 */
+        .notice {
+            font-size: 18px; /* 글자 크기 줄임 */
+            margin-bottom: 15px;
+        }
+        
+        .notice ul {
+            margin-left: 20px; /* 좌측으로 들여쓰기 */
+            list-style-position: outside; /* 번호 표시를 텍스트 왼쪽에 배치 */
         }
 
         /* 마이크 테스트 문구 크게 */
@@ -415,23 +429,27 @@
     <div class="container">
         <!-- Landing Page -->
         <div id="landing-page" class="page active">
-            <h4>나의 읽기 실력은?</h4>
+            <h5>나의 읽기 실력은?</h5>
             <p>
                 📘게임 방법<br>
             </p>
-            <p3>
+            <p class="notice">
                 게임은 총 3라운드로 진행됩니다.<br>
                 라운드마다 등장하는 문장을 읽어보세요.<br>
+                <br>
                 [유의사항]<br>
-                1. 읽을 수 있는 제한시간은 10초 입니다.<br>
-                2. 라운드 마다 80% 이상 인식되어야 게임 완료가 가능합니다.<br>
-                3. 또박또박 정확하게 읽어야 점수가 높습니다.<br>
-            </p3>
+                <ul>
+                    <li>읽을 수 있는 제한시간은 10초 입니다.</li>
+                    <li>라운드 마다 80% 이상 인식되어야 게임 완료가 가능합니다.</li>
+                    <li>또박또박 정확하게 읽어야 점수가 높습니다.</li>
+                </ul>
+            </p>
             <p2>
                 *본 게임은 STT(Speech To Text) 기술이 활용되었습니다.<br>
             </p2>            
             <button id="start-game-btn">'게임 준비'</button>
         </div>
+
 
         <!-- Microphone Test Page -->
         <div id="mic-test-page" class="page">
