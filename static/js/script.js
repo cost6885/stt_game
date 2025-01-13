@@ -647,7 +647,7 @@ function displayRankings() {
             topFive.forEach((entry, index) => {
                 const rankItem = document.createElement('div');
                 const displayScore = Math.min(entry.score, 100); // 최고점수를 100으로 제한
-                const rankText = `${entry.name} (${entry.company}) - 참여: ${entry.participationCount}회(최고점수: ${displayScore})`;
+                const rankText = `${entry.name} (${entry.company}) - 참여 ${entry.participationCount}회(최고점수 ${displayScore})`;
 
                 if (index === 0) {
                     rankItem.innerHTML = `<span class="name" style="font-weight:bold; color: rgba(0,0,0,1);">1등🥇 ${rankText}</span>`;
