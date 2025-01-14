@@ -1,6 +1,4 @@
-// static/js/script.js
-
-let mediaRecorder = null;
+let mediaRecorder;
 let audioChunks = [];
 let currentRound = 1;
 
@@ -52,20 +50,6 @@ const originalTextEl = document.getElementById('original-text');
 const recognizedTextEl = document.getElementById('recognized-text');
 const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
 const nextRoundBtn = document.getElementById('next-round-btn');
-
-let globalStream = null;       // ← getUserMedia()에서 받은 stream 저장
-let globalAudioContext = null; // ← fallback 시 사용
-let globalProcessor = null;    
-let globalSource = null;
-
-
-/* iOS 환경에서의 우회 */
-function isiOS() {
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-}
-
-
-
 
 /** 
  * 라운드가 마지막(3라운드)이면 "결과보기", 아니면 "다음 라운드"
@@ -324,117 +308,63 @@ function fetchGameSentenceAndStartRecording() {
 }
 
 /** 녹음 시작 → 10초 후 자동 종료 */
-async function startRecording(referenceSentence) {
+function startRecording(referenceSentence) {
     audioChunks = [];
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        globalStream = stream; // 전역에 할당
-
-        if (isiOS() || !MediaRecorder.isTypeSupported('audio/webm')) {
-            // ------ iOS fallback ------ 
-            globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-            globalSource = globalAudioContext.createMediaStreamSource(stream);
-            globalProcessor = globalAudioContext.createScriptProcessor(4096, 1, 1);
-
-            globalProcessor.onaudioprocess = (e) => {
-                // Float32Array
-                audioChunks.push(e.inputBuffer.getChannelData(0));
-            };
-
-            globalSource.connect(globalProcessor);
-            globalProcessor.connect(globalAudioContext.destination);
-
-            // MediaRecorder 대체 객체 
-            mediaRecorder = {
-                state: 'recording',
-                stop: () => {
-                    // processor 연결 해제
-                    globalProcessor.disconnect();
-                    globalSource.disconnect();
-                    // AudioContext 종료 (원하면)
-                    // globalAudioContext.close();
-                    // state 변경
-                    this.state = 'inactive';
-                }
-            };
-        } else {
-            // ------ 일반 브라우저 ------ 
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
             mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
             mediaRecorder.start();
-        }
 
-        const progressContainer = document.getElementById('progress-container');
-        const progressBar = document.getElementById('progress-bar');
-        progressContainer.style.display = "block";
-        progressBar.style.width = "100%";
-        progressBar.style.transition = "width 0.1s linear";
-    
-        let totalTime = 10; 
-        let elapsedTime = 0;
-        let intervalDuration = 100; // 0.1초
-    
-        let recordInterval = setInterval(() => {
-            elapsedTime += intervalDuration / 1000;
-            if (elapsedTime >= totalTime) {
-                clearInterval(recordInterval);
-                stopRecording();
-            } else {
-                const percentage = 100 - (elapsedTime / totalTime) * 100;
-                progressBar.style.width = `${percentage}%`;
-            }
-        }, intervalDuration);
-        
-    } catch (error) {
-        console.error('녹음 접근 오류:', error);
-        handleTranscriptionFail();
-    }
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav; codecs=PCM' });
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = () => {
+                    const base64data = reader.result;
+                    sendAudio(base64data, referenceSentence);
+                };
+                audioChunks = [];
+            };
+
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            progressContainer.style.display = "block";
+            progressBar.style.width = "100%";
+            progressBar.style.transition = "width 0.1s linear";
+
+            let totalTime = 10; 
+            let elapsedTime = 0;
+            let intervalDuration = 100; // 0.1초
+
+            let recordInterval = setInterval(() => {
+                elapsedTime += intervalDuration / 1000;
+                if (elapsedTime >= totalTime) {
+                    clearInterval(recordInterval);
+                    stopRecording();
+                } else {
+                    const percentage = 100 - (elapsedTime / totalTime) * 100;
+                    progressBar.style.width = `${percentage}%`;
+                }
+            }, intervalDuration);
+
+        })
+        .catch(error => {
+            console.error('녹음 접근 오류:', error);
+            handleTranscriptionFail();
+        });
 }
 
-
-function stopRecording(referenceSentence) {
-    try {
-        if (mediaRecorder?.state === 'recording' || isiOS()) {
-            mediaRecorder.stop();
-        }
-
-        // stream 중지
-        if (globalStream) {
-            globalStream.getTracks().forEach(track => track.stop());
-        }
-
-
-        // AudioContext 종료 (iOS Fallback에서 생성된 경우)
-        if (globalAudioContext) {
-            globalProcessor?.disconnect();
-            globalSource?.disconnect();
-            globalAudioContext.close(); // 명시적으로 종료
-            globalAudioContext = null;  // 참조 제거
-        }
-        
-        // 프로그레스바 초기화        
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
         gameStatus.innerText = "녹음 중지됨.";
 
-        // ---- STT 전송 로직 ----
-        // (1) 일반 MediaRecorder라면 onstop() 콜백에서 audioChunks → Blob → sendAudio(...) 진행됨.
-        //     그러나, fallback은 onstop이 없으므로 여기서 직접 처리
-
-        if (isiOS() || !MediaRecorder.isTypeSupported('audio/webm')) {
-            // fallback으로 들어왔다는 뜻
-            // audioChunks (Float32Array[]) -> processAudioChunks -> WAV Blob
-            processAudioChunks(audioChunks)
-              .then(wavBlob => {
-                  sendAudioBlob(wavBlob, referenceSentence);
-              })
-              .catch(err => {
-                  console.error('Fallback audio processing error:', err);
-                  handleTranscriptionFail();
-              });
-        }
-
-    } catch (error) {
-        console.error("녹음 중지 오류:", error);
-        gameStatus.innerText = "녹음 중 오류가 발생했습니다.";
+        const progressContainer = document.getElementById('progress-container');
+        progressContainer.style.display = "none";
     }
 }
 
@@ -478,70 +408,6 @@ function sendAudio(audioData, referenceSentence) {
       handleTranscriptionFail();
     });
 }
-
-
-
-function sendAudioBlob(audioBlob, referenceSentence) {
-    const formData = new FormData();
-    formData.append('audio', audioBlob);
-    formData.append('reference', referenceSentence);
-
-    fetch('/process', { method: 'POST', body: formData })
-        .then((response) => response.json())
-        .then((data) => {
-            if (data.error) {
-                console.error('STT 변환 실패:', data.error);
-                handleTranscriptionFail();
-                return;
-            }
-
-            const { scores, stt_text, audio_path } = data;
-            roundScores.push(scores.RoundScore);
-            showRoundFeedback(referenceSentence, stt_text, scores.RoundScore, audio_path);
-        })
-        .catch((error) => {
-            console.error('Audio processing error:', error);
-            handleTranscriptionFail();
-        });
-}
-
-
-
-
-
-async function processAudioChunks(chunks) {
-    // 1) 총 프레임 수 계산
-    const totalSamples = chunks.reduce((acc, cur) => acc + cur.length, 0);
-
-    // 2) offlineContext 준비 (16kHz 등)
-    const offlineContext = new OfflineAudioContext(1, totalSamples, 16000);
-
-    // 3) Float32Array 하나로 합치기
-    const mergedBuffer = new Float32Array(totalSamples);
-    let offset = 0;
-    for (let i = 0; i < chunks.length; i++) {
-        mergedBuffer.set(chunks[i], offset);
-        offset += chunks[i].length;
-    }
-
-    // 4) offlineContext용 AudioBuffer
-    const audioBuffer = offlineContext.createBuffer(1, totalSamples, 16000);
-    audioBuffer.copyToChannel(mergedBuffer, 0);
-
-    const source = offlineContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(offlineContext.destination);
-
-    source.start(0);
-    const renderedBuffer = await offlineContext.startRendering();
-
-    // 5) 최종 WAV Blob
-    return audioBufferToBlob(renderedBuffer);
-}
-
-
-
-
 
 /** 점수별 이미지 */
 function getScoreImage(score) {
@@ -595,19 +461,12 @@ function showRoundFeedback(reference, recognized, roundScore, audioPath) {
     const scoreImageFile = getScoreImage(roundScore);
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     if (scoreImageFile) {
-        // 이미지 추가 및 표시
         scoreImageWrapper.innerHTML = `<img src="/static/images/${scoreImageFile}" alt="scoreImage">`;
         scoreImageWrapper.style.display = "block";
-    
-        // 클릭 이벤트 추가 (숨기기 기능)
-        scoreImageWrapper.onclick = () => {
-            scoreImageWrapper.style.display = "none";
-        };
     } else {
         scoreImageWrapper.style.display = "none";
     }
 }
-
 
 /** 다음 라운드 */
 function handleNextRound() {
@@ -628,7 +487,7 @@ function handleNextRound() {
 function handleRoundRetry() {
     // 라운드 피드백 페이지를 닫고
     roundFeedbackPage.classList.remove('active');
-    
+
     // 점수 이미지를 숨기고 (필요시)
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     scoreImageWrapper.style.display = "none";
@@ -766,17 +625,17 @@ function displayRankings() {
                 throw new Error("No valid (non-cheater) rankings available");
             }
 
-            // 정렬: 참여횟수(desc) → score(desc) → responseTime(asc)
+            // 정렬: 참여횟수(desc) → responseTime(asc) → score(desc)
             filteredRankings.sort((a, b) => {
                 if (b.participationCount !== a.participationCount) {
-                    return b.participationCount - a.participationCount; // 참여횟수 내림차순
-                }
-                if (b.score !== a.score) {
-                    return b.score - a.score; // 점수 내림차순
+                    return b.participationCount - a.participationCount;
                 }
                 const aTime = new Date(a.responseTime).getTime();
                 const bTime = new Date(b.responseTime).getTime();
-                return aTime - bTime; // 시간 오름차순
+                if (aTime !== bTime) {
+                    return aTime - bTime;
+                }
+                return b.score - a.score;
             });
 
             rankingList.innerHTML = '';
@@ -786,6 +645,7 @@ function displayRankings() {
             topFive.forEach((entry, index) => {
                 const rankItem = document.createElement('div');
                 const displayScore = Math.min(entry.score, 100); // 최고점수를 100으로 제한
+                
                 const rankText = `${entry.name} (${entry.company}) - 참여 ${entry.participationCount}회(최고점수 ${displayScore})`;
 
                 if (index === 0) {
@@ -960,7 +820,7 @@ function resetGame() {
     document.getElementById('company').value = '';
     document.getElementById('employeeId').value = '';
     document.getElementById('name').value = '';
-    
+
     // 클라이언트 임시 roundScores 배열도 비움
     roundScores = [];
     // (원한다면 server 세션도 초기화 가능, 여기선 생략)
