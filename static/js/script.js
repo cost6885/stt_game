@@ -1,6 +1,6 @@
 // static/js/script.js
 
-let mediaRecorder;
+let mediaRecorder = null;
 let audioChunks = [];
 let currentRound = 1;
 
@@ -53,6 +53,10 @@ const recognizedTextEl = document.getElementById('recognized-text');
 const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
 const nextRoundBtn = document.getElementById('next-round-btn');
 
+let globalStream = null;       // ← getUserMedia()에서 받은 stream 저장
+let globalAudioContext = null; // ← fallback 시 사용
+let globalProcessor = null;    
+let globalSource = null;
 
 
 /* iOS 환경에서의 우회 */
@@ -324,45 +328,47 @@ async function startRecording(referenceSentence) {
     audioChunks = [];
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        globalStream = stream; // 전역에 할당
 
         if (isiOS() || !MediaRecorder.isTypeSupported('audio/webm')) {
-            // WebRTC 방식 대체
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const source = audioContext.createMediaStreamSource(stream);
-            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+            // ------ iOS fallback ------ 
+            globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            globalSource = globalAudioContext.createMediaStreamSource(stream);
+            globalProcessor = globalAudioContext.createScriptProcessor(4096, 1, 1);
 
-            processor.onaudioprocess = (e) => {
+            globalProcessor.onaudioprocess = (e) => {
+                // Float32Array
                 audioChunks.push(e.inputBuffer.getChannelData(0));
             };
 
-            source.connect(processor);
-            processor.connect(audioContext.destination);
-            mediaRecorder = { stop: () => processor.disconnect() }; // WebRTC 대체
+            globalSource.connect(globalProcessor);
+            globalProcessor.connect(globalAudioContext.destination);
+
+            // MediaRecorder 대체 객체 
+            mediaRecorder = {
+                state: 'recording',
+                stop: () => {
+                    // processor 연결 해제
+                    globalProcessor.disconnect();
+                    globalSource.disconnect();
+                    // AudioContext 종료 (원하면)
+                    // globalAudioContext.close();
+                    // state 변경
+                    this.state = 'inactive';
+                }
+            };
         } else {
-            // MediaRecorder 사용
+            // ------ 일반 브라우저 ------ 
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
             mediaRecorder.start();
         }
 
-        // Progress Bar
-        const progressContainer = document.getElementById('progress-container');
-        const progressBar = document.getElementById('progress-bar');
-        progressContainer.style.display = "block";
-        progressBar.style.width = "100%";
+        // 프로그레스바 표시
+        startProgressBar(10, () => {
+            stopRecording(referenceSentence);
+        });
 
-        let totalTime = 10;
-        let elapsedTime = 0;
-
-        const recordInterval = setInterval(() => {
-            elapsedTime += 0.1;
-            const percentage = 100 - (elapsedTime / totalTime) * 100;
-            progressBar.style.width = `${percentage}%`;
-            if (elapsedTime >= totalTime) {
-                clearInterval(recordInterval);
-                stopRecording(referenceSentence);
-            }
-        }, 100);
     } catch (error) {
         console.error('녹음 접근 오류:', error);
         handleTranscriptionFail();
@@ -370,38 +376,43 @@ async function startRecording(referenceSentence) {
 }
 
 
-function stopRecording() {
+function stopRecording(referenceSentence) {
     try {
-        // MediaRecorder 방식 종료
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
         }
 
-        // WebRTC 리소스 정리
-        if (audioContext) {
-            processor.disconnect();
-            source.disconnect();
-            audioContext.close();
-        }
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
+        // stream 중지
+        if (globalStream) {
+            globalStream.getTracks().forEach(track => track.stop());
         }
 
-        // Progress Bar 초기화
-        const progressContainer = document.getElementById('progress-container');
-        const progressBar = document.getElementById('progress-bar');
-        progressBar.style.width = "100%";
-        progressBar.style.transition = "none";
-        progressContainer.style.display = "none";
-
-        // 게임 상태 메시지 초기화
+        // 프로그레스바 초기화
+        resetProgressBar();
         gameStatus.innerText = "녹음 중지됨.";
+
+        // ---- STT 전송 로직 ----
+        // (1) 일반 MediaRecorder라면 onstop() 콜백에서 audioChunks → Blob → sendAudio(...) 진행됨.
+        //     그러나, fallback은 onstop이 없으므로 여기서 직접 처리
+
+        if (isiOS() || !MediaRecorder.isTypeSupported('audio/webm')) {
+            // fallback으로 들어왔다는 뜻
+            // audioChunks (Float32Array[]) -> processAudioChunks -> WAV Blob
+            processAudioChunks(audioChunks)
+              .then(wavBlob => {
+                  sendAudioBlob(wavBlob, referenceSentence);
+              })
+              .catch(err => {
+                  console.error('Fallback audio processing error:', err);
+                  handleTranscriptionFail();
+              });
+        }
+
     } catch (error) {
         console.error("녹음 중지 오류:", error);
         gameStatus.innerText = "녹음 중 오류가 발생했습니다.";
     }
 }
-
 
 /** STT 처리 (RoundScore 사용) */
 function sendAudio(audioData, referenceSentence) {
@@ -474,26 +485,34 @@ function sendAudioBlob(audioBlob, referenceSentence) {
 
 
 
-
-
 async function processAudioChunks(chunks) {
-    const audioContext = new (window.OfflineAudioContext || window.AudioContext)(1, 44100 * 10, 44100);
-    const audioBuffer = audioContext.createBuffer(1, chunks.length * 4096, 44100);
-    audioBuffer.copyToChannel(Float32Array.from(chunks.flat()), 0);
+    // 1) 총 프레임 수 계산
+    const totalSamples = chunks.reduce((acc, cur) => acc + cur.length, 0);
 
-    const offlineContext = new OfflineAudioContext(1, audioBuffer.length, 16000);
+    // 2) offlineContext 준비 (16kHz 등)
+    const offlineContext = new OfflineAudioContext(1, totalSamples, 16000);
+
+    // 3) Float32Array 하나로 합치기
+    const mergedBuffer = new Float32Array(totalSamples);
+    let offset = 0;
+    for (let i = 0; i < chunks.length; i++) {
+        mergedBuffer.set(chunks[i], offset);
+        offset += chunks[i].length;
+    }
+
+    // 4) offlineContext용 AudioBuffer
+    const audioBuffer = offlineContext.createBuffer(1, totalSamples, 16000);
+    audioBuffer.copyToChannel(mergedBuffer, 0);
+
     const source = offlineContext.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(offlineContext.destination);
-    source.start();
 
+    source.start(0);
     const renderedBuffer = await offlineContext.startRendering();
-    return audioBufferToBlob(renderedBuffer);
-}
 
-function audioBufferToBlob(buffer) {
-    const wavData = encodeWAV(buffer);
-    return new Blob([wavData], { type: 'audio/wav' });
+    // 5) 최종 WAV Blob
+    return audioBufferToBlob(renderedBuffer);
 }
 
 
