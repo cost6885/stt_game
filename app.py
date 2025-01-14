@@ -1,5 +1,4 @@
-
-        
+@@ -1,501 +1,570 @@
 import os
 import json
 import random
@@ -103,7 +102,8 @@ def generate_sentence(sentence_list):
 
 
 def normalize_text(txt):
-        lowered = re.sub(r"[^\w가-힣\s]", "", txt.lower())
+    lowered = re.sub(r"[^\w가-힣\s]", "", txt.lower())
+    for standard, variants in SYNONYM_MAP.items():
         pattern = re.compile("|".join(map(re.escape, variants)))
         lowered = pattern.sub(standard, lowered)
     return lowered.strip()
