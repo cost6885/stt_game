@@ -378,7 +378,7 @@ async function startRecording(referenceSentence) {
 
 function stopRecording(referenceSentence) {
     try {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
+        if (mediaRecorder?.state === 'recording' || isiOS()) {
             mediaRecorder.stop();
         }
 
@@ -387,8 +387,16 @@ function stopRecording(referenceSentence) {
             globalStream.getTracks().forEach(track => track.stop());
         }
 
-        // 프로그레스바 초기화
-        resetProgressBar();
+
+        // AudioContext 종료 (iOS Fallback에서 생성된 경우)
+        if (globalAudioContext) {
+            globalProcessor?.disconnect();
+            globalSource?.disconnect();
+            globalAudioContext.close(); // 명시적으로 종료
+            globalAudioContext = null;  // 참조 제거
+        }
+        
+        // 프로그레스바 초기화        
         gameStatus.innerText = "녹음 중지됨.";
 
         // ---- STT 전송 로직 ----
@@ -741,17 +749,17 @@ function displayRankings() {
                 throw new Error("No valid (non-cheater) rankings available");
             }
 
-            // 정렬: 참여횟수(desc) → responseTime(asc) → score(desc)
+            // 정렬: 참여횟수(desc) → score(desc) → responseTime(asc)
             filteredRankings.sort((a, b) => {
                 if (b.participationCount !== a.participationCount) {
-                    return b.participationCount - a.participationCount;
+                    return b.participationCount - a.participationCount; // 참여횟수 내림차순
+                }
+                if (b.score !== a.score) {
+                    return b.score - a.score; // 점수 내림차순
                 }
                 const aTime = new Date(a.responseTime).getTime();
                 const bTime = new Date(b.responseTime).getTime();
-                if (aTime !== bTime) {
-                    return aTime - bTime;
-                }
-                return b.score - a.score;
+                return aTime - bTime; // 시간 오름차순
             });
 
             rankingList.innerHTML = '';
@@ -935,7 +943,7 @@ function resetGame() {
     document.getElementById('company').value = '';
     document.getElementById('employeeId').value = '';
     document.getElementById('name').value = '';
-
+    
     // 클라이언트 임시 roundScores 배열도 비움
     roundScores = [];
     // (원한다면 server 세션도 초기화 가능, 여기선 생략)
