@@ -364,11 +364,27 @@ async function startRecording(referenceSentence) {
             mediaRecorder.start();
         }
 
-        // 프로그레스바 표시
-        startProgressBar(10, () => {
-            stopRecording(referenceSentence);
-        });
-
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        progressContainer.style.display = "block";
+        progressBar.style.width = "100%";
+        progressBar.style.transition = "width 0.1s linear";
+    
+        let totalTime = 10; 
+        let elapsedTime = 0;
+        let intervalDuration = 100; // 0.1초
+    
+        let recordInterval = setInterval(() => {
+            elapsedTime += intervalDuration / 1000;
+            if (elapsedTime >= totalTime) {
+                clearInterval(recordInterval);
+                stopRecording();
+            } else {
+                const percentage = 100 - (elapsedTime / totalTime) * 100;
+                progressBar.style.width = `${percentage}%`;
+            }
+        }, intervalDuration);
+        
     } catch (error) {
         console.error('녹음 접근 오류:', error);
         handleTranscriptionFail();
