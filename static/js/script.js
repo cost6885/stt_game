@@ -53,6 +53,16 @@ const recognizedTextEl = document.getElementById('recognized-text');
 const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
 const nextRoundBtn = document.getElementById('next-round-btn');
 
+
+
+/* iOS 환경에서의 우회 */
+function isiOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+
+
+
+
 /** 
  * 라운드가 마지막(3라운드)이면 "결과보기", 아니면 "다음 라운드"
  */
@@ -310,65 +320,88 @@ function fetchGameSentenceAndStartRecording() {
 }
 
 /** 녹음 시작 → 10초 후 자동 종료 */
-function startRecording(referenceSentence) {
+async function startRecording(referenceSentence) {
     audioChunks = [];
-    navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        if (isiOS() || !MediaRecorder.isTypeSupported('audio/webm')) {
+            // WebRTC 방식 대체
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+            processor.onaudioprocess = (e) => {
+                audioChunks.push(e.inputBuffer.getChannelData(0));
+            };
+
+            source.connect(processor);
+            processor.connect(audioContext.destination);
+            mediaRecorder = { stop: () => processor.disconnect() }; // WebRTC 대체
+        } else {
+            // MediaRecorder 사용
             mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
             mediaRecorder.start();
+        }
 
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/wav; codecs=PCM' });
-                const reader = new FileReader();
-                reader.readAsDataURL(audioBlob);
-                reader.onloadend = () => {
-                    const base64data = reader.result;
-                    sendAudio(base64data, referenceSentence);
-                };
-                audioChunks = [];
-            };
-
-            const progressContainer = document.getElementById('progress-container');
-            const progressBar = document.getElementById('progress-bar');
-            progressContainer.style.display = "block";
-            progressBar.style.width = "100%";
-            progressBar.style.transition = "width 0.1s linear";
-
-            let totalTime = 10; 
-            let elapsedTime = 0;
-            let intervalDuration = 100; // 0.1초
-
-            let recordInterval = setInterval(() => {
-                elapsedTime += intervalDuration / 1000;
-                if (elapsedTime >= totalTime) {
-                    clearInterval(recordInterval);
-                    stopRecording();
-                } else {
-                    const percentage = 100 - (elapsedTime / totalTime) * 100;
-                    progressBar.style.width = `${percentage}%`;
-                }
-            }, intervalDuration);
-
-        })
-        .catch(error => {
-            console.error('녹음 접근 오류:', error);
-            handleTranscriptionFail();
-        });
-}
-
-function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-        gameStatus.innerText = "녹음 중지됨.";
-
+        // Progress Bar
         const progressContainer = document.getElementById('progress-container');
-        progressContainer.style.display = "none";
+        const progressBar = document.getElementById('progress-bar');
+        progressContainer.style.display = "block";
+        progressBar.style.width = "100%";
+
+        let totalTime = 10;
+        let elapsedTime = 0;
+
+        const recordInterval = setInterval(() => {
+            elapsedTime += 0.1;
+            const percentage = 100 - (elapsedTime / totalTime) * 100;
+            progressBar.style.width = `${percentage}%`;
+            if (elapsedTime >= totalTime) {
+                clearInterval(recordInterval);
+                stopRecording(referenceSentence);
+            }
+        }, 100);
+    } catch (error) {
+        console.error('녹음 접근 오류:', error);
+        handleTranscriptionFail();
     }
 }
+
+
+function stopRecording() {
+    try {
+        // MediaRecorder 방식 종료
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+
+        // WebRTC 리소스 정리
+        if (audioContext) {
+            processor.disconnect();
+            source.disconnect();
+            audioContext.close();
+        }
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+
+        // Progress Bar 초기화
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        progressBar.style.width = "100%";
+        progressBar.style.transition = "none";
+        progressContainer.style.display = "none";
+
+        // 게임 상태 메시지 초기화
+        gameStatus.innerText = "녹음 중지됨.";
+    } catch (error) {
+        console.error("녹음 중지 오류:", error);
+        gameStatus.innerText = "녹음 중 오류가 발생했습니다.";
+    }
+}
+
 
 /** STT 처리 (RoundScore 사용) */
 function sendAudio(audioData, referenceSentence) {
@@ -410,6 +443,62 @@ function sendAudio(audioData, referenceSentence) {
       handleTranscriptionFail();
     });
 }
+
+
+
+function sendAudioBlob(audioBlob, referenceSentence) {
+    const formData = new FormData();
+    formData.append('audio', audioBlob);
+    formData.append('reference', referenceSentence);
+
+    fetch('/process', { method: 'POST', body: formData })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.error) {
+                console.error('STT 변환 실패:', data.error);
+                handleTranscriptionFail();
+                return;
+            }
+
+            const { scores, stt_text, audio_path } = data;
+            roundScores.push(scores.RoundScore);
+            showRoundFeedback(referenceSentence, stt_text, scores.RoundScore, audio_path);
+        })
+        .catch((error) => {
+            console.error('Audio processing error:', error);
+            handleTranscriptionFail();
+        });
+}
+
+
+
+
+
+
+
+async function processAudioChunks(chunks) {
+    const audioContext = new (window.OfflineAudioContext || window.AudioContext)(1, 44100 * 10, 44100);
+    const audioBuffer = audioContext.createBuffer(1, chunks.length * 4096, 44100);
+    audioBuffer.copyToChannel(Float32Array.from(chunks.flat()), 0);
+
+    const offlineContext = new OfflineAudioContext(1, audioBuffer.length, 16000);
+    const source = offlineContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineContext.destination);
+    source.start();
+
+    const renderedBuffer = await offlineContext.startRendering();
+    return audioBufferToBlob(renderedBuffer);
+}
+
+function audioBufferToBlob(buffer) {
+    const wavData = encodeWAV(buffer);
+    return new Blob([wavData], { type: 'audio/wav' });
+}
+
+
+
+
 
 /** 점수별 이미지 */
 function getScoreImage(score) {
@@ -463,12 +552,18 @@ function showRoundFeedback(reference, recognized, roundScore, audioPath) {
     const scoreImageFile = getScoreImage(roundScore);
     const scoreImageWrapper = document.getElementById('score-image-wrapper');
     if (scoreImageFile) {
+        // 이미지 추가 및 표시
         scoreImageWrapper.innerHTML = `<img src="/static/images/${scoreImageFile}" alt="scoreImage">`;
         scoreImageWrapper.style.display = "block";
+    
+        // 클릭 이벤트 추가 (숨기기 기능)
+        scoreImageWrapper.onclick = () => {
+            scoreImageWrapper.style.display = "none";
+        };
     } else {
         scoreImageWrapper.style.display = "none";
     }
-}
+
 
 /** 다음 라운드 */
 function handleNextRound() {
