@@ -1,3 +1,5 @@
+
+        
 import os
 import json
 import random
@@ -26,7 +28,6 @@ app.secret_key = "ANY_RANDOM_SECRET_KEY_FOR_SESSION"  # 세션을 사용하려�
 
 TOTAL_ROUNDS = 1
 
-
 SYNONYM_MAP = {
     # 딥러닝 관련
     "딥러닝": ["deep learning", "딥러닝", "딮러닝"],
@@ -36,7 +37,6 @@ SYNONYM_MAP = {
     "하이퍼파라미터": ["hyperparameter", "하이퍼 파라미터", "하이퍼파라미터"],
     "튜닝": ["tuning", "튜닝"],
     "최적화": ["optimization", "최적화", "오티마이제이션"],
-
     # 컴퓨팅 관련
     "양자": ["quantum", "양자"],
     "컴퓨팅": ["computing", "컴퓨팅"],
@@ -44,43 +44,36 @@ SYNONYM_MAP = {
     "클러스터": ["cluster", "클러스터"],
     "병렬처리": ["parallel processing", "병렬처리"],
     "GPU": ["gpu", "GPU", "지피유"],
-
     # 데이터 분석 및 알고리즘
     "데이터": ["data", "데이터"],
     "알고리즘": ["algorithm", "알고리즘"],
     "분석": ["analysis", "분석"],
     "기법": ["technique", "기법"],
     "파이프라인": ["pipeline", "파이프라인"],
-
     # 네트워크 및 IoT
     "네트워크": ["network", "네트워크"],
     "IoT": ["iot", "사물인터넷", "아이오티"],
     "디바이스": ["device", "디바이스"],
-
     # 인공지능
     "인공지능": ["artificial intelligence", "ai", "인공지능", "에이아이"],
     "추천 시스템": ["recommendation system", "추천 시스템"],
     "컴퓨터 비전": ["computer vision", "컴퓨터 비전"],
-
     # 클라우드 및 서버
     "클라우드": ["cloud", "클라우드"],
     "컨테이너": ["container", "컨테이너"],
     "오케스트레이션": ["orchestration", "오케스트레이션"],
     "서버리스": ["serverless", "서버리스"],
-
     # 기타 IT 용어
     "증강현실": ["augmented reality", "증강현실", "AR"],
     "증강": ["augmentation", "증강"],
     "스마트": ["smart", "스마트"],
     "트랜잭션": ["transaction", "트랜잭션"],
     "서치 엔진": ["search engine", "서치 엔진"],
-
     # 생각과 철학
     "positive": ["파지티브", "포지티브"],
     "thinking": ["띵킹", "씽킹"],
     "reflective": ["리플렉티브", "리플렉"],
     "system": ["시스템", "system"],
-
     # 일상 및 문화
     "음식": ["food", "음식"],
     "맛": ["flavor", "맛"],
@@ -90,14 +83,6 @@ SYNONYM_MAP = {
     "삶": ["life", "삶"],
     "고객": ["customer", "고객"],
 }
-
-
-
-
-
-
-
-
 # Load API Keys
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
@@ -118,12 +103,10 @@ def generate_sentence(sentence_list):
 
 
 def normalize_text(txt):
-    lowered = re.sub(r"[^\w가-힣\s]", "", txt.lower())
-    for standard, variants in SYNONYM_MAP.items():
+        lowered = re.sub(r"[^\w가-힣\s]", "", txt.lower())
         pattern = re.compile("|".join(map(re.escape, variants)))
         lowered = pattern.sub(standard, lowered)
     return lowered.strip()
-
 
 def compare_sentences(reference, user_input):
     ref_norm = normalize_text(reference)
@@ -180,61 +163,56 @@ def get_game_sentence():
 
 @app.route('/process', methods=['POST'])
 def process():
-    # 1) 인증 토큰 검사
-    data = request.form if request.form else request.json
+    data = request.get_json() or {}
+
+    # 1) authToken 검사
     client_token = data.get("authToken", "")
     if "auth_token" not in session or session["auth_token"] != client_token:
         return jsonify({"error": "Unauthorized"}), 401
 
+    audio_data = data.get('audio')
     reference_sentence = data.get('reference')
-    if not reference_sentence:
-        return jsonify({"error": "Reference sentence is missing"}), 400
 
-    # 2) Blob 방식 처리
-    if 'audio' in request.files:
-        audio_file = request.files['audio']
-        audio_path = os.path.join("static", "audio", audio_file.filename)
-        os.makedirs(os.path.dirname(audio_path), exist_ok=True)
-        audio_file.save(audio_path)
-    # 3) Base64 방식 처리
-    elif data.get('audio'):
-        audio_data = data.get('audio')
-        try:
-            audio_bytes = base64.b64decode(audio_data.split(',')[1])
-        except Exception as e:
-            print(f"Audio Decoding Error: {e}")
-            return jsonify({"error": "Invalid audio data"}), 400
+    if not audio_data or not reference_sentence:
+        return jsonify({"error": "Invalid data"}), 400
 
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        audio_filename = f"audio_{uuid.uuid4().hex}.wav"
-        audio_path = os.path.join("static", "audio", audio_filename)
+    # Decode base64 audio
+    try:
+        audio_bytes = base64.b64decode(audio_data.split(',')[1])
+    except Exception as e:
+        print(f"Audio Decoding Error: {e}")
+        return jsonify({"error": "Invalid audio data"}), 400
 
-        os.makedirs(os.path.dirname(audio_path), exist_ok=True)
-        with open(audio_path, "wb") as f:
-            f.write(audio_bytes)
-    else:
-        return jsonify({"error": "No audio data provided"}), 400
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    audio_filename = f"audio_{uuid.uuid4().hex}.wav"
+    audio_path = os.path.join("static", "audio", audio_filename)
 
-    # 4) STT
+    # Save audio file
+    os.makedirs(os.path.dirname(audio_path), exist_ok=True)
+    with open(audio_path, "wb") as f:
+        f.write(audio_bytes)
+
+    # STT
     whisper_text = transcribe_with_whisper(audio_path)
     if whisper_text is None:
         return jsonify({"error": "Transcription failed"}), 500
 
-    # 5) 유사도 비교
+    # Compare text
     whisper_score = compare_sentences(reference_sentence, whisper_text)
-    total_score = min(max(whisper_score, 0), 100)
 
-    # 6) 응답
+    # ★ Pitch/Volume 제거 → 여기서는 단순히 Whisper 점수만으로 총점 계산
+    total_score = whisper_score
+    total_score = min(max(total_score, 0), 100)  # 점수는 0~100 사이로 제한
+
     response = {
         "scores": {
             "Whisper": whisper_score,
             "RoundScore": total_score
         },
         "stt_text": whisper_text,
-        "audio_path": f"/static/audio/{os.path.basename(audio_path)}"
+        "audio_path": f"/static/audio/{audio_filename}"
     }
     return jsonify(response)
-
 
 
 # -----------------------------------------
