@@ -180,56 +180,61 @@ def get_game_sentence():
 
 @app.route('/process', methods=['POST'])
 def process():
-    data = request.get_json() or {}
-    
-    # 1) authToken 검사
+    # 1) 인증 토큰 검사
+    data = request.form if request.form else request.json
     client_token = data.get("authToken", "")
     if "auth_token" not in session or session["auth_token"] != client_token:
         return jsonify({"error": "Unauthorized"}), 401
-    
-    audio_data = data.get('audio')
+
     reference_sentence = data.get('reference')
+    if not reference_sentence:
+        return jsonify({"error": "Reference sentence is missing"}), 400
 
-    if not audio_data or not reference_sentence:
-        return jsonify({"error": "Invalid data"}), 400
+    # 2) Blob 방식 처리
+    if 'audio' in request.files:
+        audio_file = request.files['audio']
+        audio_path = os.path.join("static", "audio", audio_file.filename)
+        os.makedirs(os.path.dirname(audio_path), exist_ok=True)
+        audio_file.save(audio_path)
+    # 3) Base64 방식 처리
+    elif data.get('audio'):
+        audio_data = data.get('audio')
+        try:
+            audio_bytes = base64.b64decode(audio_data.split(',')[1])
+        except Exception as e:
+            print(f"Audio Decoding Error: {e}")
+            return jsonify({"error": "Invalid audio data"}), 400
 
-    # Decode base64 audio
-    try:
-        audio_bytes = base64.b64decode(audio_data.split(',')[1])
-    except Exception as e:
-        print(f"Audio Decoding Error: {e}")
-        return jsonify({"error": "Invalid audio data"}), 400
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        audio_filename = f"audio_{uuid.uuid4().hex}.wav"
+        audio_path = os.path.join("static", "audio", audio_filename)
 
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    audio_filename = f"audio_{uuid.uuid4().hex}.wav"
-    audio_path = os.path.join("static", "audio", audio_filename)
+        os.makedirs(os.path.dirname(audio_path), exist_ok=True)
+        with open(audio_path, "wb") as f:
+            f.write(audio_bytes)
+    else:
+        return jsonify({"error": "No audio data provided"}), 400
 
-    # Save audio file
-    os.makedirs(os.path.dirname(audio_path), exist_ok=True)
-    with open(audio_path, "wb") as f:
-        f.write(audio_bytes)
-
-    # STT
+    # 4) STT
     whisper_text = transcribe_with_whisper(audio_path)
     if whisper_text is None:
         return jsonify({"error": "Transcription failed"}), 500
 
-    # Compare text
+    # 5) 유사도 비교
     whisper_score = compare_sentences(reference_sentence, whisper_text)
+    total_score = min(max(whisper_score, 0), 100)
 
-    # ★ Pitch/Volume 제거 → 여기서는 단순히 Whisper 점수만으로 총점 계산
-    total_score = whisper_score
-    total_score = min(max(total_score, 0), 100)  # 점수는 0~100 사이로 제한
-
+    # 6) 응답
     response = {
         "scores": {
             "Whisper": whisper_score,
             "RoundScore": total_score
         },
         "stt_text": whisper_text,
-        "audio_path": f"/static/audio/{audio_filename}"
+        "audio_path": f"/static/audio/{os.path.basename(audio_path)}"
     }
     return jsonify(response)
+
 
 
 # -----------------------------------------
