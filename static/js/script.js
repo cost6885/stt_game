@@ -590,6 +590,7 @@ function showRoundFeedback(reference, recognized, roundScore, audioPath) {
     } else {
         scoreImageWrapper.style.display = "none";
     }
+}
 
 
 /** 다음 라운드 */
