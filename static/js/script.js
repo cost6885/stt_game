@@ -463,6 +463,11 @@ function showRoundFeedback(reference, recognized, roundScore, audioPath) {
     if (scoreImageFile) {
         scoreImageWrapper.innerHTML = `<img src="/static/images/${scoreImageFile}" alt="scoreImage">`;
         scoreImageWrapper.style.display = "block";
+        
+        // 클릭 이벤트 추가 (숨기기 기능)
+        scoreImageWrapper.onclick = () => {
+            scoreImageWrapper.style.display = "none";
+        };
     } else {
         scoreImageWrapper.style.display = "none";
     }
@@ -625,17 +630,17 @@ function displayRankings() {
                 throw new Error("No valid (non-cheater) rankings available");
             }
 
-            // 정렬: 참여횟수(desc) → responseTime(asc) → score(desc)
+            // 정렬: 참여횟수(desc) → score(desc) → responseTime(asc)
             filteredRankings.sort((a, b) => {
                 if (b.participationCount !== a.participationCount) {
-                    return b.participationCount - a.participationCount;
+                    return b.participationCount - a.participationCount; // 참여횟수 내림차순
+                }
+                if (b.score !== a.score) {
+                    return b.score - a.score; // 점수 내림차순
                 }
                 const aTime = new Date(a.responseTime).getTime();
                 const bTime = new Date(b.responseTime).getTime();
-                if (aTime !== bTime) {
-                    return aTime - bTime;
-                }
-                return b.score - a.score;
+                return aTime - bTime; // 시간 오름차순
             });
 
             rankingList.innerHTML = '';
