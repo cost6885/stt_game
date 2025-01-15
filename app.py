@@ -144,12 +144,19 @@ def start_game():
     # 추가: 임시 난수 토큰 생성 & 세션에 저장
     token = uuid.uuid4().hex
     session["auth_token"] = token
+    
+    user_agent = request.headers.get('User-Agent', '').lower()
+    if 'iphone' in user_agent or 'android' in user_agent:
+        device_type = "mobile"
+    else:
+        device_type = "web"
 
     return jsonify({
         "status": "ok",
         "message": "Game started",
         "serverTime": session["game_start_time"],
-        "authToken": token  # ← 클라이언트에게도 보내줌
+        "authToken": token  # ← 클라이언트에게도 보내줌,
+        "deviceType": device_type
     })
 
 @app.route('/get_game_sentence', methods=['GET'])
