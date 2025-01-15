@@ -129,8 +129,10 @@ def transcribe_with_whisper(audio_path):
 
 @app.route('/')
 def index():
+    user_agent = request.headers.get('User-Agent', '').lower()
+    device_type = "mobile" if 'iphone' in user_agent or 'android' in user_agent else "web"
     test_sentence = generate_sentence(test_sentences)
-    return render_template('index.html', test_sentence=test_sentence)
+    return render_template('index.html', test_sentence=test_sentence, device_type=device_type)
 
 
 # -----------------------------------------
