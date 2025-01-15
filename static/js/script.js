@@ -205,8 +205,18 @@ function startGameSequence() {
         return;
     }
 
+
+    const isMobile = /iphone|ipad|ipod|android/.test(navigator.userAgent.toLowerCase());
     // 서버에 /start_game → 세션에 game_start_time 기록
-    fetch('/start_game', { method: 'POST' })
+    fetch('/start_game', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            deviceType: isMobile ? "mobile" : "web"
+        })    
+    })
+
+        
         .then(response => response.json())
         .then(data => {
             console.log("서버에서 게임 시작 시간 설정 완료:", data);
