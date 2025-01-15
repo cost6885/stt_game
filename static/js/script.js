@@ -367,7 +367,7 @@ function fetchGameSentenceAndStartRecording() {
 }
 
 /** 녹음 시작 → 10초 후 자동 종료 */
-function startRecording(referenceSentence) {
+async function startRecording(referenceSentence) {
     audioChunks = [];
 
     // iOS Safari 한정으로 AudioContext를 이 시점에 생성
