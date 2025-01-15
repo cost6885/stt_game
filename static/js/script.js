@@ -70,6 +70,29 @@ function detectDevice() {
 
 
 
+function adjustLayoutForDevice() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobile = /iphone|ipad|ipod|android/.test(userAgent);
+
+    if (isMobile) {
+        console.log("모바일 디바이스로 감지됨");
+        document.body.classList.add('mobile-layout');
+        // 추가적으로 모바일 전용 요소 크기 조정
+        document.querySelector('#game-start-image').style.width = '300px';
+    } else {
+        console.log("데스크톱 디바이스로 감지됨");
+        document.body.classList.add('desktop-layout');
+    }
+}
+
+// DOMContentLoaded 이벤트에 디바이스 감지 로직 추가
+document.addEventListener('DOMContentLoaded', () => {
+    adjustLayoutForDevice();
+});
+
+
+
+
 
 /** 
  * 라운드가 마지막(3라운드)이면 "결과보기", 아니면 "다음 라운드"
