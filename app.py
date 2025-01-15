@@ -157,9 +157,10 @@ def start_game():
         "status": "ok",
         "message": "Game started",
         "serverTime": session["game_start_time"],
-        "authToken": token  # ← 클라이언트에게도 보내줌,
-        "deviceType": device_type
+        "authToken": token,  # ← 쉼표 유지
+        "deviceType": device_type  # 마지막 항목에는 쉼표 없음
     })
+
 
 @app.route('/get_game_sentence', methods=['GET'])
 def get_game_sentence():
