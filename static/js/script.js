@@ -70,6 +70,7 @@ function detectDevice() {
 
 
 
+// 디바이스에 따라 레이아웃 조정
 function adjustLayoutForDevice() {
     const userAgent = navigator.userAgent.toLowerCase();
     const isMobile = /iphone|ipad|ipod|android/.test(userAgent);
@@ -78,7 +79,10 @@ function adjustLayoutForDevice() {
         console.log("모바일 디바이스로 감지됨");
         document.body.classList.add('mobile-layout');
         // 추가적으로 모바일 전용 요소 크기 조정
-        document.querySelector('#game-start-image').style.width = '300px';
+        const gameStartImage = document.querySelector('#game-start-image');
+        if (gameStartImage) {
+            gameStartImage.style.width = '300px'; // 모바일에 맞게 이미지 크기 조정
+        }
     } else {
         console.log("데스크톱 디바이스로 감지됨");
         document.body.classList.add('desktop-layout');
@@ -89,6 +93,7 @@ function adjustLayoutForDevice() {
 document.addEventListener('DOMContentLoaded', () => {
     adjustLayoutForDevice();
 });
+
 
 
 
