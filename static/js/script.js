@@ -51,30 +51,32 @@ const recognizedTextEl = document.getElementById('recognized-text');
 const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
 const nextRoundBtn = document.getElementById('next-round-btn');
 
+let audioContext;
+
+let isMobile = false; // 전역 변수로 선언
 
 
-/** 디바이스 판별 */
 function detectDevice() {
     const userAgent = navigator.userAgent.toLowerCase();
-    const isMobile = /iphone|ipad|ipod|android/.test(userAgent);
-    
-    if (isMobile) {
-        console.log("모바일 디바이스로 접속");
-        // 모바일 전용 스타일 추가 또는 기능 변경
+    const isIOS = /iphone|ipad|ipod/.test(userAgent);
+    const isAndroid = /android/.test(userAgent);
+
+    isMobile = isIOS || isAndroid; // iOS와 Android 모두를 포함하는 isMobile 설정
+
+    if (isIOS) {
+        console.log("iOS 디바이스 접속");
+        document.body.dataset.deviceType = 'ios'; // iOS 태그 추가
+    } else if (isAndroid) {
+        console.log("안드로이드 디바이스 접속");
+        document.body.dataset.deviceType = 'android'; // Android 태그 추가
     } else {
-        console.log("웹 브라우저로 접속");
-        // 웹 전용 스타일 추가 또는 기능 변경
+        console.log("웹 브라우저 접속");
+        document.body.dataset.deviceType = 'web'; // 웹 태그 추가
     }
 }
 
-
-
-
-// 디바이스에 따라 레이아웃 조정
+/** 디바이스에 따른 레이아웃 조정 */
 function adjustLayoutForDevice() {
-    const userAgent = navigator.userAgent.toLowerCase();
-    const isMobile = /iphone|ipad|ipod|android/.test(userAgent);
-
     if (isMobile) {
         console.log("모바일 디바이스로 감지됨");
         document.body.classList.add('mobile-layout');
@@ -83,15 +85,11 @@ function adjustLayoutForDevice() {
         if (gameStartImage) {
             gameStartImage.style.width = '300px'; // 모바일에 맞게 이미지 크기 조정
         }
-    } 
+    } else {
+        console.log("데스크톱 브라우저로 감지됨");
+        document.body.classList.add('desktop-layout'); // 데스크톱 전용 클래스 추가
     }
-
-// DOMContentLoaded 이벤트에 디바이스 감지 로직 추가
-document.addEventListener('DOMContentLoaded', () => {
-    adjustLayoutForDevice();
-});
-
-
+}
 
 
 
@@ -139,7 +137,13 @@ startGameBtn.addEventListener('click', () => {
 
 /** 마이크 테스트 버튼 */
 testMicBtn.addEventListener('click', async () => {
-    try {
+    // iOS Safari 한정으로 AudioContext를 이 시점에 생성
+    if (isIOS && !audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        await audioContext.resume(); 
+    }
+    
+    try {        
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         micStatus.innerText = "마이크 연결 성공! 문장을 말해보세요...";
         startMicTest(stream);
@@ -365,6 +369,18 @@ function fetchGameSentenceAndStartRecording() {
 /** 녹음 시작 → 10초 후 자동 종료 */
 function startRecording(referenceSentence) {
     audioChunks = [];
+
+    // iOS Safari 한정으로 AudioContext를 이 시점에 생성
+    if (isIOS && !audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        await audioContext.resume(); 
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("이 브라우저에서는 마이크 접근이 지원되지 않습니다. iOS 최신 버전 또는 Chrome/Android를 이용해주세요.");
+        return;
+    }
+    
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
             mediaRecorder = new MediaRecorder(stream);
@@ -845,16 +861,6 @@ function rankmore() {
         });
 }
 
-/** DOMContentLoaded → 랭킹 초기 표시 */
-document.addEventListener('DOMContentLoaded', () => {
-    displayRankings();
-    const rankmoreBtn = document.getElementById('rankmore');
-    if (rankmoreBtn) {
-        rankmoreBtn.addEventListener('click', rankmore);
-    }
-    // 디바이스 판별 로직 추가
-    detectDevice();
-});
 
 /** "다시하기" */
 function prapare() {
@@ -887,3 +893,37 @@ function resetGame() {
     roundScores = [];
     // (원한다면 server 세션도 초기화 가능, 여기선 생략)
 }
+
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 디바이스 감지 및 레이아웃 조정
+    detectDevice();
+    adjustLayoutForDevice();
+
+    // 랭킹 초기 표시
+    displayRankings();
+
+    // 랭킹 더보기 버튼 클릭 이벤트
+    const rankmoreBtn = document.getElementById('rankmore');
+    if (rankmoreBtn) {
+        rankmoreBtn.addEventListener('click', rankmore);
+    }
+
+    // 시작 버튼 → 마이크 테스트 페이지로 이동
+    startGameBtn.addEventListener('click', () => {
+        showPage(micTestPage);
+
+        // 랭킹 보드 숨기기
+        const rankingBoard = document.getElementById('ranking-board-container');
+        if (rankingBoard) {
+            rankingBoard.style.display = 'none';
+        }
+    });
+
+    // "다시하기" 준비 버튼
+    const retryBtn = document.getElementById('retry-btn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', prapare);
+    }
+});
