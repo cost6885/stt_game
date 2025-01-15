@@ -83,11 +83,8 @@ function adjustLayoutForDevice() {
         if (gameStartImage) {
             gameStartImage.style.width = '300px'; // 모바일에 맞게 이미지 크기 조정
         }
-    } else {
-        console.log("데스크톱 디바이스로 감지됨");
-        document.body.classList.add('desktop-layout');
+    } 
     }
-}
 
 // DOMContentLoaded 이벤트에 디바이스 감지 로직 추가
 document.addEventListener('DOMContentLoaded', () => {
