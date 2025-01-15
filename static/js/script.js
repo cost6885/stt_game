@@ -51,6 +51,26 @@ const recognizedTextEl = document.getElementById('recognized-text');
 const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
 const nextRoundBtn = document.getElementById('next-round-btn');
 
+
+
+/** 디바이스 판별 */
+function detectDevice() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isMobile = /iphone|ipad|ipod|android/.test(userAgent);
+    
+    if (isMobile) {
+        console.log("모바일 디바이스로 접속");
+        // 모바일 전용 스타일 추가 또는 기능 변경
+    } else {
+        console.log("웹 브라우저로 접속");
+        // 웹 전용 스타일 추가 또는 기능 변경
+    }
+}
+
+
+
+
+
 /** 
  * 라운드가 마지막(3라운드)이면 "결과보기", 아니면 "다음 라운드"
  */
@@ -797,6 +817,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rankmoreBtn) {
         rankmoreBtn.addEventListener('click', rankmore);
     }
+    // 디바이스 판별 로직 추가
+    detectDevice();
 });
 
 /** "다시하기" */
