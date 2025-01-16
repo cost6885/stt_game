@@ -487,19 +487,23 @@
         }
 
         .mobile-layout p4 {
-            text-align: center; /* 텍스트를 가운데 정렬 */
-            display: flex; /* flex 컨테이너로 설정 */
-            flex-direction: column; /* 내부 요소 세로 배치 */
-            align-items: center; /* 수평 중앙 정렬 */
-            justify-content: center; /* 수직 중앙 정렬 */
-            margin: 10px auto; /* 여백 추가 및 가운데 정렬 */
+            width: 90%; /* 화면 크기의 90%로 제한 */
+            max-width: 400px; /* 최대 너비 */
+            margin: 0 auto; /* 가운데 정렬 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
+
+
 
         .mobile-layout h5 {
             font-size: 40px;             
         }
         
         .mobile-layout #ranking-board-container {
+            top: 0;
             width: 100%; /* 화면 너비 전체 사용 */
             padding: 15px; /* 내부 패딩을 적당히 추가 */
             border-radius: 0; /* 둥근 모서리 제거 */
