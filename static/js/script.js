@@ -1,543 +1,19 @@
-let mediaRecorder;
-let audioChunks = [];
-let currentRound = 1;
-
-const totalRounds = 3;
-let countdownInterval;
-let micTestPassed = false;
-
-// 라운드별 점수를 담는 임시 배열 (서버에서도 세션을 쓰므로, 여기선 참고용)
-let roundScores = [];
-
-// 타이머 시작 시간(프론트에서의 경과 시간 체크)
-let gameStartTime;
-
-/** 이미 사용한 문장 리스트 (중복 방지) */
-let usedSentences = []; 
-
-/** 현재 라운드에서 불러온 원문을 저장 */
-let lastReference = ""; 
-
-// 마이크 테스트용 문구 (index.html에서 {{ test_sentence }} 로 넘겨옴)
-const requiredTestSentence = typeof testSentence !== 'undefined' ? testSentence : "인생을 맛있게";
-
-// 주요 페이지 요소
-const landingPage = document.getElementById('landing-page');
-const micTestPage = document.getElementById('mic-test-page');
-const gameStartPage = document.getElementById('game-start-page'); // 로딩 페이지 (2초)
-gameStartPage.style.display = 'none';
-
-const roundPage = document.getElementById('round-page');
-const roundFeedbackPage = document.getElementById('round-feedback-page');
-
-// 최종 점수 제출 폼
-const formContainer = document.getElementById('formContainer');
-const finalScoreDisplay = document.getElementById('final-score');
-
-// 버튼 / 요소
-const startGameBtn = document.getElementById('start-game-btn');
-const testMicBtn = document.getElementById('test-mic-btn');
-const micStatus = document.getElementById('mic-status');
-const gameStartImage = document.getElementById('game-start-image');
-const roundTitle = document.getElementById('round-title');
-const countdownDisplay = document.getElementById('countdown');
-const gameText = document.getElementById('game-text');
-const gameStatus = document.getElementById('game-status');
-
-// 라운드 피드백
-const recordedAudioEl = document.getElementById('recorded-audio');
-const originalTextEl = document.getElementById('original-text');
-const recognizedTextEl = document.getElementById('recognized-text');
-const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
-const nextRoundBtn = document.getElementById('next-round-btn');
-
-let audioContext;
-
-let isMobile = false; // 전역 변수로 선언
-let isIOS = false;    // iOS 여부 전역 변수 추가
-
-
-function detectDevice() {
-    const userAgent = navigator.userAgent.toLowerCase();
-    isIOS = /iphone|ipad|ipod/.test(userAgent); // 전역 변수 isIOS에 설정
-    const isAndroid = /android/.test(userAgent);
-
-    isMobile = isIOS || isAndroid; // iOS와 Android 모두를 포함하는 isMobile 설정
-
-    if (isIOS) {
-        console.log("iOS 디바이스 접속");
-        document.body.dataset.deviceType = 'ios'; // iOS 태그 추가
-    } else if (isAndroid) {
-        console.log("안드로이드 디바이스 접속");
-        document.body.dataset.deviceType = 'android'; // Android 태그 추가
-    } else {
-        console.log("웹 브라우저 접속");
-        document.body.dataset.deviceType = 'web'; // 웹 태그 추가
-    }
-}
-
-/** 디바이스에 따른 레이아웃 조정 */
-function adjustLayoutForDevice() {
-    if (isMobile) {
-        console.log("모바일 디바이스로 감지됨");
-        document.body.classList.add('mobile-layout');
-        // 추가적으로 모바일 전용 요소 크기 조정
         const gameStartImage = document.querySelector('#game-start-image');
         if (gameStartImage) {
             gameStartImage.style.width = '300px'; // 모바일에 맞게 이미지 크기 조정
         }
     } else {
-        console.log("데스크톱 브라우저로 감지됨");
-        document.body.classList.add('desktop-layout'); // 데스크톱 전용 클래스 추가
+        console.log("데스크톱 디바이스로 감지됨");
+        document.body.classList.add('desktop-layout');
     }
 }
 
-
-
-
-/** 
- * 라운드가 마지막(3라운드)이면 "결과보기", 아니면 "다음 라운드"
- */
-function updateNextRoundButtonLabel() {
-    if (currentRound === totalRounds) {
-        nextRoundBtn.textContent = "결과보기";
-    } else {
-        nextRoundBtn.textContent = "다음 라운드";
-    }
-}
-
-/** 페이지 전환 헬퍼 */
-function showPage(page) {
-    [landingPage, micTestPage, roundPage, roundFeedbackPage].forEach(p => p.classList.remove('active'));
-    page.classList.add('active');
-
-    // landingPage가 활성화될 때마다 랭킹 보드 갱신
-    if (page === landingPage) {
-        displayRankings();
-    }
-}
-
-/** 폼 표시/숨김 */
-function showFormContainer() {
-    formContainer.style.display = "block";
-}
-function hideFormContainer() {
-    formContainer.style.display = "none";
-}
-
-/** 시작 버튼 → 마이크 테스트 페이지로 */
-startGameBtn.addEventListener('click', () => {
-    showPage(micTestPage);
-
-    // 랭킹 보드 숨기기
-    const rankingBoard = document.getElementById('ranking-board-container');
-    if (rankingBoard) {
-        rankingBoard.style.display = 'none';
-    }
+// DOMContentLoaded 이벤트에 디바이스 감지 로직 추가
+document.addEventListener('DOMContentLoaded', () => {
+    adjustLayoutForDevice();
 });
 
-/** 마이크 테스트 버튼 */
-testMicBtn.addEventListener('click', async () => {
-    // iOS Safari 한정으로 AudioContext를 이 시점에 생성
-    if (isIOS && !audioContext) { // 전역 변수 isIOS를 사용
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        await audioContext.resume(); 
-    }
-    
-    try {        
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        micStatus.innerText = "마이크 연결 성공! 문장을 말해보세요...";
-        startMicTest(stream);
-    } catch (error) {
-        console.error('마이크 접근 실패:', error);
-        micStatus.innerText = "마이크 접근 실패. 브라우저 권한 확인 요망.";
-    }
-});
-
-
-/** 마이크 테스트 (5초) */
-function startMicTest(stream) {
-    mediaRecorder = new MediaRecorder(stream);
-    mediaRecorder.start();
-    audioChunks = [];
-
-    mediaRecorder.ondataavailable = event => {
-        audioChunks.push(event.data);
-    };
-
-    mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav; codecs=PCM' });
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = () => {
-            const base64data = reader.result;
-            sendAudioForTest(base64data, requiredTestSentence);
-        };
-    };
-
-    // 5초 후 자동 중지
-    setTimeout(() => {
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
-        }
-    }, 5000);
-}
-
-/** 마이크 테스트 음성 전송 */
-function sendAudioForTest(audioData, referenceSentence) {
-    fetch('/mic_test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            audio: audioData,
-            reference: referenceSentence,            
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.error) {
-            console.error('마이크 테스트 실패:', data.error);
-            micStatus.innerText = "마이크 테스트 실패: " + data.error;
-            micTestPassed = false;            
-            return;
-        }
-
-        const { scores } = data;
-        if (!scores || typeof scores.Whisper !== 'number') {
-            micStatus.innerText = "마이크 테스트 실패. 결과 데이터 이상.";
-            micTestPassed = false;
-            return;
-        }
-
-        // Whisper 점수가 50 이상이면 통과
-        if (scores.Whisper > 50) {
-            micStatus.innerText = "마이크 테스트 성공.";
-            micTestPassed = true;
-            startGameSequence();
-        } else {
-            micStatus.innerText = `말을 하셨나요? 마이크 상태를 확인 해주세요.`;
-            micTestPassed = false;
-            // (테스트 편의를 위해 자동 우회하려면 주석 해제)
-            // micTestPassed = true;
-            // startGameSequence();
-        }
-    })
-    .catch(error => {
-        console.error('마이크 테스트 오류:', error);
-        micStatus.innerText = "마이크 테스트 실패 (네트워크/서버 오류)";
-        micTestPassed = false;
-    });
-}
-
-/** 게임 시작 시퀀스 */
-function startGameSequence() {
-    if (!micTestPassed) {
-        micStatus.innerText = "마이크 테스트 통과 필요.";
-        return;
-    }
-
-
-    const isMobile = /iphone|ipad|ipod|android/.test(navigator.userAgent.toLowerCase());
-    // 서버에 /start_game → 세션에 game_start_time 기록
-    fetch('/start_game', { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            deviceType: isMobile ? "mobile" : "web"
-        })    
-    })
-
-        
-        .then(response => response.json())
-        .then(data => {
-            console.log("서버에서 게임 시작 시간 설정 완료:", data);
-
-            // 추가: data.authToken 수신 → 전역 변수나 어디든 저장
-            window.authToken = data.authToken;
-
-            gameStartTime = Date.now();
-
-            // 로딩(게임시작) 페이지 2초 노출
-            gameStartPage.style.display = 'flex';
-            setTimeout(() => {
-                gameStartPage.style.display = 'none';
-                currentRound = 1;
-                roundScores = [];  
-                usedSentences = [];
-
-                showPage(roundPage);
-                startRound(currentRound);
-            }, 2000);
-        })
-        .catch(err => {
-            console.error("'/start_game' 호출 오류:", err);
-            micStatus.innerText = "서버에 게임 시작 알리는 중 오류 발생";
-        });
-}
-
-/** 라운드를 진행했는지 여부 */
-function checkRoundsCompleted() {
-    return currentRound > 1 || roundScores.length > 0;
-}
-
-/** 부정행위 여부 판단 */
-function isCheating() {
-    const elapsedTime = Date.now() - gameStartTime; // ms
-    const roundsCompleted = checkRoundsCompleted();
-    return !roundsCompleted || elapsedTime < 30000; 
-}
-
-/** 라운드 시작 */
-function startRound(round) {
-    if (!micTestPassed) {
-        micStatus.innerText = "마이크 테스트 통과 후 라운드 진행 가능.";
-        return;
-    }
-    if (round > totalRounds) {
-        endGame();
-        return;
-    }
-
-    showPage(roundPage);
-    roundTitle.innerText = `라운드 ${round}`;
-    gameStatus.innerText = '';
-    gameText.classList.add('hidden');
-
-    let countdown = 3;
-    countdownDisplay.innerText = countdown;
-
-    countdownInterval = setInterval(() => {
-        countdown--;
-        if (countdown <= 0) {
-            clearInterval(countdownInterval);
-            countdownDisplay.innerText = '';
-            fetchGameSentenceAndStartRecording();
-        } else {
-            countdownDisplay.innerText = countdown;
-        }
-    }, 1000);
-}
-
-/** 게임 문장 + 녹음(중복 방지) */
-function fetchGameSentenceAndStartRecording() {
-    let attempts = 0;
-
-    function fetchDistinctSentence() {
-        attempts++;
-        if (attempts > 5) {
-            console.warn("중복 제거 실패(5회). 어쩔 수 없이 중복 문장 사용");
-            proceedRecording("중복 문장 (임시)", true);
-            return;
-        }
-        fetch('/get_game_sentence')
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    console.warn('게임 문장 실패:', data.error);
-                    handleTranscriptionFail();
-                    return;
-                }
-                const gameSentence = data.game_sentence;
-                if (!gameSentence) {
-                    console.warn('게임 문장이 비어있음');
-                    handleTranscriptionFail();
-                    return;
-                }
-                if (usedSentences.includes(gameSentence)) {
-                    console.log("중복 문장 감지, 재시도");
-                    fetchDistinctSentence();
-                } else {
-                    usedSentences.push(gameSentence);
-                    proceedRecording(gameSentence, false);
-                }
-            })
-            .catch(error => {
-                console.error('게임 문장 오류:', error);
-                handleTranscriptionFail();
-            });
-    }
-
-    function proceedRecording(gameSentence, forced) {
-        lastReference = gameSentence; 
-        gameText.innerText = gameSentence;
-        gameText.classList.remove('hidden');
-        gameStatus.innerText = "녹음 중...";
-        startRecording(gameSentence);
-    }
-
-    fetchDistinctSentence();
-}
-
-/** 녹음 시작 → 10초 후 자동 종료 */
-async function startRecording(referenceSentence) {
-    audioChunks = [];
-
-    // iOS Safari 한정으로 AudioContext를 이 시점에 생성
-    if (isIOS && !audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        await audioContext.resume(); 
-    }
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("이 브라우저에서는 마이크 접근이 지원되지 않습니다. iOS 최신 버전 또는 Chrome/Android를 이용해주세요.");
-        return;
-    }
-    
-    navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.start();
-
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/wav; codecs=PCM' });
-                const reader = new FileReader();
-                reader.readAsDataURL(audioBlob);
-                reader.onloadend = () => {
-                    const base64data = reader.result;
-                    sendAudio(base64data, referenceSentence);
-                };
-                audioChunks = [];
-            };
-
-            const progressContainer = document.getElementById('progress-container');
-            const progressBar = document.getElementById('progress-bar');
-            progressContainer.style.display = "block";
-            progressBar.style.width = "100%";
-            progressBar.style.transition = "width 0.1s linear";
-
-            let totalTime = 10; 
-            let elapsedTime = 0;
-            let intervalDuration = 100; // 0.1초
-
-            let recordInterval = setInterval(() => {
-                elapsedTime += intervalDuration / 1000;
-                if (elapsedTime >= totalTime) {
-                    clearInterval(recordInterval);
-                    stopRecording();
-                } else {
-                    const percentage = 100 - (elapsedTime / totalTime) * 100;
-                    progressBar.style.width = `${percentage}%`;
-                }
-            }, intervalDuration);
-
-        })
-        .catch(error => {
-            console.error('녹음 접근 오류:', error);
-            handleTranscriptionFail();
-        });
-}
-
-function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-        gameStatus.innerText = "녹음 중지됨.";
-
-        const progressContainer = document.getElementById('progress-container');
-        progressContainer.style.display = "none";
-    }
-}
-
-/** STT 처리 (RoundScore 사용) */
-function sendAudio(audioData, referenceSentence) {
-  fetch('/process', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-        audio: audioData,
-        reference: referenceSentence,
-        authToken: window.authToken  // ← 추가
-    })
-  })
-    .then(response => response.json())
-    .then(data => {
-      if (data.error) {
-        console.error('STT 변환 실패:', data.error);
-        handleTranscriptionFail();
-        return;
-      }
-      const { scores, stt_text, audio_path } = data;
-      // ★ RoundScore 검사
-      if (!scores || typeof scores.RoundScore !== 'number' || !stt_text) {
-        console.warn('STT 결과 데이터 이상');
-        handleTranscriptionFail();
-        return;
-      }
-
-      // 클라이언트 임시로 roundScores 배열에 push
-      roundScores.push(scores.RoundScore);
-
-      // 콘솔 표시 (RoundScore만 사용)
-      console.log(`라운드 ${currentRound} 점수: ${Math.round(scores.RoundScore)}점`);
-
-      // 라운드 피드백
-      showRoundFeedback(referenceSentence, stt_text, scores.RoundScore, audio_path);
-    })
-    .catch(error => {
-      console.error('STT 변환 오류:', error);
-      handleTranscriptionFail();
-    });
-}
-
-/** 점수별 이미지 */
-function getScoreImage(score) {
-    if (score === 0) return "ya.gif";
-    else if (score > 0 && score <= 10) return "jjugul.gif";
-    else if (score > 10 && score <= 20) return "myom.gif";
-    else if (score > 20 && score <= 30) return "shower.gif";
-    else if (score > 30 && score <= 40) return "whatdo.gif";
-    else if (score > 40 && score <= 60) return "youcandoit.gif";
-    else if (score > 60 && score <= 70) return "thismakes.gif";
-    else if (score > 70 && score <= 80) return "party.gif";
-    else if (score > 80 && score <= 90) return "thumbup.gif";
-    else if (score === 100) return "welldone.gif";
-    else if (score > 90 && score < 100) return "thumbup.gif"; 
-    return null;
-}
-
-/** 라운드 피드백 표시 */
-function showRoundFeedback(reference, recognized, roundScore, audioPath) {
-    roundPage.classList.remove('active');
-    roundFeedbackPage.classList.add('active');
-
-    recordedAudioEl.src = audioPath || "";
-    recordedAudioEl.load();
-
-    originalTextEl.innerHTML = reference;
-    recognizedTextEl.innerHTML = highlightDifferences(reference, recognized);
-
-    let feedbackClass = "bad";
-    let feedbackText = "BAD";
-    if (roundScore > 70) {
-        feedbackClass = "good";
-        feedbackText = "GOOD";
-    } else if (roundScore > 50) {
-        feedbackClass = "normal";
-        feedbackText = "NORMAL";
-    }
-
-    scoreFeedbackTextEl.className = "score-feedback " + feedbackClass;
-    scoreFeedbackTextEl.textContent = `${feedbackText} ( ${Math.round(roundScore)}% )`;
-
-    // 점수 기준에 따라 버튼 설정
-    if (roundScore <= 80) { // 80점 이하일 경우
-        nextRoundBtn.textContent = "다시하기";
-        nextRoundBtn.onclick = handleRoundRetry; // ← 다시하기 핸들러로 변경
-    } else {
-        updateNextRoundButtonLabel();
-        nextRoundBtn.onclick = handleNextRound;
-    }
-
-    const scoreImageFile = getScoreImage(roundScore);
-    const scoreImageWrapper = document.getElementById('score-image-wrapper');
-    if (scoreImageFile) {
-        scoreImageWrapper.innerHTML = `<img src="/static/images/${scoreImageFile}" alt="scoreImage">`;
-        scoreImageWrapper.style.display = "block";
-        
-        // 클릭 이벤트 추가 (숨기기 기능)
+ // 클릭 이벤트 추가 (숨기기 기능)
         scoreImageWrapper.onclick = () => {
             scoreImageWrapper.style.display = "none";
         };
@@ -702,8 +178,7 @@ function displayRankings() {
             if (filteredRankings.length === 0) {
                 throw new Error("No valid (non-cheater) rankings available");
             }
-
-            // 정렬: 참여횟수(desc) → score(desc) → responseTime(asc)
+                // 정렬: 참여횟수(desc) → score(desc) → responseTime(asc)
             filteredRankings.sort((a, b) => {
                 if (b.participationCount !== a.participationCount) {
                     return b.participationCount - a.participationCount; // 참여횟수 내림차순
@@ -713,6 +188,7 @@ function displayRankings() {
                 }
                 const aTime = new Date(a.responseTime).getTime();
                 const bTime = new Date(b.responseTime).getTime();
+
                 return aTime - bTime; // 시간 오름차순
             });
 
@@ -723,7 +199,7 @@ function displayRankings() {
             topFive.forEach((entry, index) => {
                 const rankItem = document.createElement('div');
                 const displayScore = Math.min(entry.score, 100); // 최고점수를 100으로 제한
-                
+
                 const rankText = `${entry.name} (${entry.company}) - 참여 ${entry.participationCount}회(최고점수 ${displayScore})`;
 
                 if (index === 0) {
@@ -863,6 +339,14 @@ function rankmore() {
         });
 }
 
+/** DOMContentLoaded → 랭킹 초기 표시 */
+document.addEventListener('DOMContentLoaded', () => {
+    displayRankings();
+    const rankmoreBtn = document.getElementById('rankmore');
+    if (rankmoreBtn) {
+        rankmoreBtn.addEventListener('click', rankmore);
+    }
+});
 
 /** "다시하기" */
 function prapare() {
@@ -895,37 +379,3 @@ function resetGame() {
     roundScores = [];
     // (원한다면 server 세션도 초기화 가능, 여기선 생략)
 }
-
-
-
-document.addEventListener('DOMContentLoaded', () => {
-    // 디바이스 감지 및 레이아웃 조정
-    detectDevice();
-    adjustLayoutForDevice();
-
-    // 랭킹 초기 표시
-    displayRankings();
-
-    // 랭킹 더보기 버튼 클릭 이벤트
-    const rankmoreBtn = document.getElementById('rankmore');
-    if (rankmoreBtn) {
-        rankmoreBtn.addEventListener('click', rankmore);
-    }
-
-    // 시작 버튼 → 마이크 테스트 페이지로 이동
-    startGameBtn.addEventListener('click', () => {
-        showPage(micTestPage);
-
-        // 랭킹 보드 숨기기
-        const rankingBoard = document.getElementById('ranking-board-container');
-        if (rankingBoard) {
-            rankingBoard.style.display = 'none';
-        }
-    });
-
-    // "다시하기" 준비 버튼
-    const retryBtn = document.getElementById('retry-btn');
-    if (retryBtn) {
-        retryBtn.addEventListener('click', prapare);
-    }
-});
