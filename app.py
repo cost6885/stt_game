@@ -399,6 +399,7 @@ def finish_game():
 
     data = request.get_json() or {}
     client_token = data.get("authToken", "")
+    
     if "auth_token" not in session or session["auth_token"] != client_token:
         return jsonify({"error": "Unauthorized"}), 401
 
