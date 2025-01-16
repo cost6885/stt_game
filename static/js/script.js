@@ -54,11 +54,12 @@ const nextRoundBtn = document.getElementById('next-round-btn');
 let audioContext;
 
 let isMobile = false; // 전역 변수로 선언
+let isIOS = false;    // iOS 여부 전역 변수 추가
 
 
 function detectDevice() {
     const userAgent = navigator.userAgent.toLowerCase();
-    const isIOS = /iphone|ipad|ipod/.test(userAgent);
+    isIOS = /iphone|ipad|ipod/.test(userAgent); // 전역 변수 isIOS에 설정
     const isAndroid = /android/.test(userAgent);
 
     isMobile = isIOS || isAndroid; // iOS와 Android 모두를 포함하는 isMobile 설정
@@ -138,7 +139,7 @@ startGameBtn.addEventListener('click', () => {
 /** 마이크 테스트 버튼 */
 testMicBtn.addEventListener('click', async () => {
     // iOS Safari 한정으로 AudioContext를 이 시점에 생성
-    if (isIOS && !audioContext) {
+    if (isIOS && !audioContext) { // 전역 변수 isIOS를 사용
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         await audioContext.resume(); 
     }
@@ -152,6 +153,7 @@ testMicBtn.addEventListener('click', async () => {
         micStatus.innerText = "마이크 접근 실패. 브라우저 권한 확인 요망.";
     }
 });
+
 
 /** 마이크 테스트 (5초) */
 function startMicTest(stream) {
