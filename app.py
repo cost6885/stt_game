@@ -129,10 +129,8 @@ def transcribe_with_whisper(audio_path):
 
 @app.route('/')
 def index():
-    user_agent = request.headers.get('User-Agent', '').lower()
-    device_type = "mobile" if 'iphone' in user_agent or 'android' in user_agent else "web"
     test_sentence = generate_sentence(test_sentences)
-    return render_template('index.html', test_sentence=test_sentence, device_type=device_type)
+    return render_template('index.html', test_sentence=test_sentence)
 
 
 # -----------------------------------------
@@ -146,21 +144,13 @@ def start_game():
     # 추가: 임시 난수 토큰 생성 & 세션에 저장
     token = uuid.uuid4().hex
     session["auth_token"] = token
-    
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if 'iphone' in user_agent or 'android' in user_agent:
-        device_type = "mobile"
-    else:
-        device_type = "web"
 
     return jsonify({
         "status": "ok",
         "message": "Game started",
         "serverTime": session["game_start_time"],
-        "authToken": token,  # ← 쉼표 유지
-        "deviceType": device_type  # 마지막 항목에는 쉼표 없음
+        "authToken": token  # ← 클라이언트에게도 보내줌
     })
-
 
 @app.route('/get_game_sentence', methods=['GET'])
 def get_game_sentence():
