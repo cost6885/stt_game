@@ -631,6 +631,7 @@ function sendToGoogleSheets() {
     const company = document.getElementById('company').value.trim();
     const employeeId = document.getElementById('employeeId').value.trim();
     const name = document.getElementById('name').value.trim();
+    const submitButton = document.getElementById("submitButton"); // 제출 버튼
 
     if (!company || !employeeId || !name) {
         console.warn("모든 정보를 입력해주세요!");
@@ -644,24 +645,29 @@ function sendToGoogleSheets() {
         return;
     }
 
+    // 제출 버튼 비활성화
+    submitButton.disabled = true;
+
     // 서버에 회사/사번/이름만 전달
     fetch('/finish_game', {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-                company,
-                employeeId,
-                name,
-                authToken: window.authToken,
-                roundScores: roundScores  // ← 추가
-              })
+        body: JSON.stringify({
+            company,
+            employeeId,
+            name,
+            authToken: window.authToken,
+            roundScores: roundScores  // ← 추가
+        })
     })
     .then(res => res.json())
     .then(data => {
         console.log("finish_game 응답:", data);
 
+        // 서버에서 오류 응답이 오면 버튼을 다시 활성화하고, 오류 메시지를 표시
         if (data.error) {
             alert("오류 발생: " + data.error);
+            submitButton.disabled = false; // 버튼 다시 활성화
             return;
         }
 
@@ -673,12 +679,19 @@ function sendToGoogleSheets() {
             alert("저장 중 일부 에러 발생");
             console.warn("localResult:", data.localResult, "sheetResult:", data.sheetResult);
         }
+
+        // 응답 후 버튼 다시 활성화
+        submitButton.disabled = false;
     })
     .catch(err => {
         console.error("finish_game 호출 오류:", err);
         alert("저장 중 오류 발생");
+
+        // 오류 발생 시 버튼을 다시 활성화
+        submitButton.disabled = false;
     });
 }
+
 
 /** 랭킹 보드: 상위 5명 */
 function displayRankings() {
