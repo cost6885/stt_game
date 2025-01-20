@@ -821,17 +821,19 @@ function rankmore() {
                 throw new Error("No valid (non-cheater) rankings available");
             }
 
+            // rankmore() 부분 수정
             entireRankings.sort((a, b) => {
                 if (b.participationCount !== a.participationCount) {
-                    return b.participationCount - a.participationCount;
+                    return b.participationCount - a.participationCount; // 참여횟수 내림차순
+                }
+                if (b.score !== a.score) {
+                    return b.score - a.score; // 점수 내림차순
                 }
                 const aTime = new Date(a.responseTime).getTime();
                 const bTime = new Date(b.responseTime).getTime();
-                if (aTime !== bTime) {
-                    return aTime - bTime;
-                }
-                return b.score - a.score;
+                return aTime - bTime; // 참여시각 오름차순
             });
+
 
             const container = popupDoc.getElementById('popup-ranking-board');
             container.innerHTML = '';
