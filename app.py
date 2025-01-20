@@ -147,10 +147,11 @@ def index():
 # -----------------------------------------
 @app.route('/start_game', methods=['POST'])
 def start_game():
-    game_id = uuid.uuid4().hex  # 고유 게임 ID 생성
-    auth_token = uuid.uuid4().hex  # 인증 토큰 생성
+    ###### [추가/수정] ######
+    auth_token = uuid.uuid4().hex   # 인증 토큰
+    game_id = uuid.uuid4().hex      # 내부용 game_id, 클라이언트 미노출
+    ########################
 
-    # Redis에 초기 상태 저장
     game_info = {
         "game_id": game_id,
         "auth_token": auth_token,
@@ -158,14 +159,15 @@ def start_game():
         "is_finished": False,
         "start_time": time.time()
     }
-    redis_client.setex(f"game:{game_id}", 3600, json.dumps(game_info))  # TTL 1시간 설정
 
+    ###### [변경] Redis 키도 auth:{auth_token}로 변경 ######
+    redis_client.setex(f"auth:{auth_token}", 3600, json.dumps(game_info))
+
+    ###### [클라이언트 응답] gameId 제거 ######
     return jsonify({
         "status": "ok",
-        "gameId": game_id,
-        "authToken": auth_token,
-        "startTime": game_info["start_time"]
-    })
+        "authToken": auth_token,  # ← 클라이언트는 authToken만 받는다
+    }), 200
 
 @app.route('/get_game_sentence', methods=['GET'])
 def get_game_sentence():
@@ -178,25 +180,22 @@ def get_game_sentence():
 @app.route('/process', methods=['POST'])
 def process():
     data = request.get_json() or {}
-    game_id = data.get("gameId", "")
+
+    ###### [삭제] game_id = data.get("gameId", "") ######
     auth_token = data.get("authToken", "")
     audio_data = data.get("audio")
     reference_sentence = data.get("reference")
 
     # 1. 데이터 유효성 검증
-    if not audio_data or not reference_sentence:
-        return jsonify({"error": "Invalid audio or reference sentence"}), 400
+    if not auth_token or not audio_data or not reference_sentence:
+        return jsonify({"error": "Invalid data"}), 400
 
-    # 2. Redis에서 게임 상태 조회
-    raw_game_info = redis_client.get(f"game:{game_id}")
+    ###### [변경] Redis에서 auth:{auth_token} 키 조회 ######
+    raw_game_info = redis_client.get(f"auth:{auth_token}")
     if not raw_game_info:
         return jsonify({"error": "Session expired. Please start a new game."}), 401
 
     game_info = json.loads(raw_game_info)
-
-    # 3. 인증 토큰 검증
-    if game_info.get("auth_token") != auth_token:
-        return jsonify({"error": "Unauthorized request. Invalid auth token."}), 401
 
     # 4. 게임 종료 상태 확인
     if game_info.get("is_finished"):
@@ -419,32 +418,28 @@ def test_local_rankings():
 @app.route('/finish_game', methods=['POST'])
 def finish_game():
     data = request.get_json() or {}
-    game_id = data.get("gameId", "")
+
+    ###### [삭제] game_id = data.get("gameId", "")
     auth_token = data.get("authToken", "")
     round_scores = data.get("roundScores", [])
-    company = data.get("company", "")  # 요청 데이터에서 회사 정보 가져오기
-    employeeId = data.get("employeeId", "")  # 요청 데이터에서 사번 정보 가져오기
-    name = data.get("name", "")  # 요청 데이터에서 이름 정보 가져오기
+    company = data.get("company", "")
+    employeeId = data.get("employeeId", "")
+    name = data.get("name", "")
 
-    # Redis에서 게임 상태 조회
-    raw_game_info = redis_client.get(f"game:{game_id}")
+    ###### [변경] auth:{auth_token} 키 조회 ######
+    raw_game_info = redis_client.get(f"auth:{auth_token}")
     if not raw_game_info:
-        return jsonify({"error": "Invalid or expired gameId"}), 401
+        return jsonify({"error": "Invalid or expired session"}), 401
 
     game_info = json.loads(raw_game_info)
 
-    # 인증 토큰 검증
-    if game_info.get("auth_token") != auth_token:
-        return jsonify({"error": "Unauthorized"}), 401
+    # 2. game_id 유효성 검증 (내부적으로만 사용)
+    game_id = game_info.get("game_id")
+    if not game_id:
+        return jsonify({"error": "Game ID is missing or invalid"}), 400
 
-    # 치팅 방지: 라운드 수 검증
-    if game_info.get("round_sum", 0) < TOTAL_ROUNDS:
-        return jsonify({"error": "Not enough rounds completed"}), 400
-
-    # 치팅 방지: 이미 종료된 게임
     if game_info.get("is_finished"):
         return jsonify({"error": "Game already finished"}), 400
-
     # 최종 점수 계산
     avg_score = sum(round_scores) / len(round_scores)
     final_score = round(avg_score)
