@@ -815,13 +815,12 @@ function rankmore() {
         .then(data => {
             let entireRankings = data.rankings || [];
 
-            // 부정행위자 제외
+            // 동일한 필터링과 정렬 적용
             entireRankings = entireRankings.filter(entry => entry.status !== "부정행위");
             if (entireRankings.length === 0) {
                 throw new Error("No valid (non-cheater) rankings available");
             }
 
-            // 정렬 동일
             entireRankings.sort((a, b) => {
                 if (b.participationCount !== a.participationCount) {
                     return b.participationCount - a.participationCount;
