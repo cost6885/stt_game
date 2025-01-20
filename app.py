@@ -13,7 +13,6 @@ import re
 
 # 추가: requests 라이브러리
 import requests
-
 import redis
 
 
@@ -32,7 +31,7 @@ app.secret_key = "ANY_RANDOM_SECRET_KEY_FOR_SESSION"  # 세션을 사용하려�
 # Redis 클라이언트 설정
 redis_client = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
 
-TOTAL_ROUNDS = 1
+TOTAL_ROUNDS = 3
 
 SYNONYM_MAP = {
     # 딥러닝 관련
@@ -148,30 +147,24 @@ def index():
 # -----------------------------------------
 @app.route('/start_game', methods=['POST'])
 def start_game():
-
     game_id = uuid.uuid4().hex  # 고유 게임 ID 생성
     auth_token = uuid.uuid4().hex  # 인증 토큰 생성
-    
-    # 기존: 세션에 시작 시간 기록
-    session["game_start_time"] = time.time()
 
-    # 추가: 임시 난수 토큰 생성 & 세션에 저장
-    token = uuid.uuid4().hex
-    session["auth_token"] = token
-
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if 'iphone' in user_agent or 'android' in user_agent:
-        device_type = "mobile"
-    else:
-        device_type = "web"
+    # Redis에 초기 상태 저장
+    game_info = {
+        "game_id": game_id,
+        "auth_token": auth_token,
+        "round_sum": 0,
+        "is_finished": False,
+        "start_time": time.time()
+    }
+    redis_client.setex(f"game:{game_id}", 3600, json.dumps(game_info))  # TTL 1시간 설정
 
     return jsonify({
         "status": "ok",
-        "message": "Game started",
-        "serverTime": session["game_start_time"],
-
-        "authToken": token,  # ← 쉼표 유지
-        "deviceType": device_type  # 마지막 항목에는 쉼표 없음
+        "gameId": game_id,
+        "authToken": auth_token,
+        "startTime": game_info["start_time"]
     })
 
 @app.route('/get_game_sentence', methods=['GET'])
@@ -185,46 +178,60 @@ def get_game_sentence():
 @app.route('/process', methods=['POST'])
 def process():
     data = request.get_json() or {}
+    game_id = data.get("gameId", "")
+    auth_token = data.get("authToken", "")
+    audio_data = data.get("audio")
+    reference_sentence = data.get("reference")
 
-    # 1) authToken 검사
-    client_token = data.get("authToken", "")
-    if "auth_token" not in session or session["auth_token"] != client_token:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    audio_data = data.get('audio')
-    reference_sentence = data.get('reference')
-
+    # 1. 데이터 유효성 검증
     if not audio_data or not reference_sentence:
-        return jsonify({"error": "Invalid data"}), 400
+        return jsonify({"error": "Invalid audio or reference sentence"}), 400
 
-    # Decode base64 audio
+    # 2. Redis에서 게임 상태 조회
+    raw_game_info = redis_client.get(f"game:{game_id}")
+    if not raw_game_info:
+        return jsonify({"error": "Session expired. Please start a new game."}), 401
+
+    game_info = json.loads(raw_game_info)
+
+    # 3. 인증 토큰 검증
+    if game_info.get("auth_token") != auth_token:
+        return jsonify({"error": "Unauthorized request. Invalid auth token."}), 401
+
+    # 4. 게임 종료 상태 확인
+    if game_info.get("is_finished"):
+        return jsonify({"error": "Game already finished. No further actions allowed."}), 400
+
+    # 5. 라운드 진행 상태 업데이트
+    game_info["round_sum"] += 1
+    redis_client.setex(f"game:{game_id}", 3600, json.dumps(game_info))  # 상태 저장 (TTL 갱신)
+
+    # 6. 오디오 데이터 디코딩
     try:
         audio_bytes = base64.b64decode(audio_data.split(',')[1])
     except Exception as e:
         print(f"Audio Decoding Error: {e}")
         return jsonify({"error": "Invalid audio data"}), 400
 
+    # 7. 오디오 파일 저장
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     audio_filename = f"audio_{uuid.uuid4().hex}.wav"
     audio_path = os.path.join("static", "audio", audio_filename)
 
-    # Save audio file
     os.makedirs(os.path.dirname(audio_path), exist_ok=True)
     with open(audio_path, "wb") as f:
         f.write(audio_bytes)
 
-    # STT
+    # 8. STT 처리
     whisper_text = transcribe_with_whisper(audio_path)
     if whisper_text is None:
-        return jsonify({"error": "Transcription failed"}), 500
+        return jsonify({"error": "Transcription failed. Please try again."}), 500
 
-    # Compare text
+    # 9. 텍스트 비교 및 점수 계산
     whisper_score = compare_sentences(reference_sentence, whisper_text)
+    total_score = min(max(whisper_score, 0), 100)  # 점수는 0~100 사이로 제한
 
-    # ★ Pitch/Volume 제거 → 여기서는 단순히 Whisper 점수만으로 총점 계산
-    total_score = whisper_score
-    total_score = min(max(total_score, 0), 100)  # 점수는 0~100 사이로 제한
-
+    # 10. 응답 생성
     response = {
         "scores": {
             "Whisper": whisper_score,
@@ -234,6 +241,7 @@ def process():
         "audio_path": f"/static/audio/{audio_filename}"
     }
     return jsonify(response)
+
 
 
 # -----------------------------------------
@@ -410,38 +418,43 @@ def test_local_rankings():
 
 @app.route('/finish_game', methods=['POST'])
 def finish_game():
-    """
-    1) 부정행위 체크 (세션 시간 or authToken)
-    2) 프론트엔드에서 전달받은 roundScores[] 로 최종 평균 계산
-    3) 랭킹/로컬 파일/구글 시트 저장
-    4) 응답
-    """
-    # 간단한 세션 시간(부정행위) 체크
-    is_cheat, reason = check_cheating_time(threshold=30)
-
     data = request.get_json() or {}
-    client_token = data.get("authToken", "")
-    if "auth_token" not in session or session["auth_token"] != client_token:
+    game_id = data.get("gameId", "")
+    auth_token = data.get("authToken", "")
+    round_scores = data.get("roundScores", [])
+    company = data.get("company", "")  # 요청 데이터에서 회사 정보 가져오기
+    employeeId = data.get("employeeId", "")  # 요청 데이터에서 사번 정보 가져오기
+    name = data.get("name", "")  # 요청 데이터에서 이름 정보 가져오기
+
+    # Redis에서 게임 상태 조회
+    raw_game_info = redis_client.get(f"game:{game_id}")
+    if not raw_game_info:
+        return jsonify({"error": "Invalid or expired gameId"}), 401
+
+    game_info = json.loads(raw_game_info)
+
+    # 인증 토큰 검증
+    if game_info.get("auth_token") != auth_token:
         return jsonify({"error": "Unauthorized"}), 401
 
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
+    # 치팅 방지: 라운드 수 검증
+    if game_info.get("round_sum", 0) < TOTAL_ROUNDS:
+        return jsonify({"error": "Not enough rounds completed"}), 400
 
-    company = data.get("company", "")
-    employeeId = data.get("employeeId", "")
-    name = data.get("name", "")
-    # ★ 클라이언트에서 roundScores 배열 통째로 보내도록
-    round_scores = data.get("roundScores", [])
+    # 치팅 방지: 이미 종료된 게임
+    if game_info.get("is_finished"):
+        return jsonify({"error": "Game already finished"}), 400
 
-    if not isinstance(round_scores, list) or len(round_scores) == 0:
-        return jsonify({"error": "roundScores is empty or invalid"}), 400
-
-    # 2) 최종점수(서버 기준)
+    # 최종 점수 계산
     avg_score = sum(round_scores) / len(round_scores)
     final_score = round(avg_score)
 
-    # 3) 랭킹 저장 (로컬 + 구글)
-    status_value = "부정행위" if is_cheat else "정상"
+    # 평균 점수가 80점 미만인 경우 부정행위로 처리
+    status_value = "부정행위" if final_score < 80 else "정상"
+
+    # 게임 종료 상태로 업데이트
+    game_info["is_finished"] = True
+    redis_client.setex(f"game:{game_id}", 3600, json.dumps(game_info))  # 업데이트된 상태 저장
 
     # --- (A) save to local
     try:
@@ -488,7 +501,7 @@ def finish_game():
         local_response = {
             "status": "success",
             "message": "Data saved/updated to local ranking_data.json",
-            "cheatInfo": reason if is_cheat else ""
+            "cheatInfo": status_value if status_value == "부정행위" else ""
         }
     except Exception as e:
         print(f"Error saving to local: {e}")
@@ -510,16 +523,14 @@ def finish_game():
         print(f"Error saving to Google Sheet: {e}")
         sheet_response = {"status": "error", "message": str(e)}
 
-    # 토큰 폐기 (원하면)
-    session.pop("auth_token", None)
-    session.pop("auth_token_expiry", None)
-    session.pop("game_start_time", None)
-
+    # JSON 응답 생성
     return jsonify({
         "finalScore": final_score,
+        "status": status_value,
         "localResult": local_response,
         "sheetResult": sheet_response
     }), 200
+
 
 
 @app.route('/mic_test', methods=['POST'])
