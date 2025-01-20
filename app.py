@@ -14,6 +14,11 @@ import re
 # 추가: requests 라이브러리
 import requests
 
+import redis
+
+
+
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -23,6 +28,9 @@ app = Flask(__name__)
 app.config['SESSION_COOKIE_SECURE'] = False  # HTTPS 환경에서만 작동할거면 true, 개발환경에서는 false
 
 app.secret_key = "ANY_RANDOM_SECRET_KEY_FOR_SESSION"  # 세션을 사용하려면 반드시 secret_key 설정 (임의 문자열)
+
+# Redis 클라이언트 설정
+redis_client = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
 
 TOTAL_ROUNDS = 1
 
@@ -140,6 +148,10 @@ def index():
 # -----------------------------------------
 @app.route('/start_game', methods=['POST'])
 def start_game():
+
+    game_id = uuid.uuid4().hex  # 고유 게임 ID 생성
+    auth_token = uuid.uuid4().hex  # 인증 토큰 생성
+    
     # 기존: 세션에 시작 시간 기록
     session["game_start_time"] = time.time()
 
