@@ -181,7 +181,6 @@ def get_game_sentence():
 def process():
     data = request.get_json() or {}
 
-    ###### [삭제] game_id = data.get("gameId", "") ######
     auth_token = data.get("authToken", "")
     audio_data = data.get("audio")
     reference_sentence = data.get("reference")
