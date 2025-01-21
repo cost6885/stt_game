@@ -200,13 +200,13 @@ def process():
     game_id = game_info.get("game_id")
     if not game_id:
         return jsonify({"error": "Game ID missing in session data"}), 500
-
     # 4. 게임 종료 상태 확인
     if game_info.get("is_finished"):
         return jsonify({"error": "Game already finished. No further actions allowed."}), 400
 
     # 5. 라운드 진행 상태 업데이트
     game_info["round_sum"] += 1
+
     redis_client.setex(f"auth:{auth_token}", 3600, json.dumps(game_info))  # 상태 저장 (TTL 갱신)
 
     # 6. 오디오 데이터 디코딩
@@ -422,7 +422,8 @@ def test_local_rankings():
 @app.route('/finish_game', methods=['POST'])
 def finish_game():
     data = request.get_json() or {}
-    
+
+    ###### [삭제] game_id = data.get("gameId", "")
     auth_token = data.get("authToken", "")
     round_scores = data.get("roundScores", [])
     company = data.get("company", "")
