@@ -251,7 +251,7 @@ function startGameSequence() {
 
         .then(response => response.json())
         .then(data => {
-            console.log("서버에서 게임 시작 시간 설정 완료:", data);
+            // console.log("서버에서 게임 시작 시간 설정 완료:", data);
 
             // 추가: data.authToken 수신 → 전역 변수나 어디든 저장
             window.authToken = data.authToken;
@@ -650,7 +650,7 @@ function sendToGoogleSheets() {
         return;
     }
 
-    console.log('fetch 요청 전');  // 로그 추가
+    // console.log('fetch 요청 전');  // 로그 추가
 
     // 서버에 회사/사번/이름만 전달
     fetch('/finish_game', {
@@ -665,11 +665,11 @@ function sendToGoogleSheets() {
         })
     })
     .then(res => {
-        console.log('fetch 응답 받음', res);  // 로그 추가
+        // console.log('fetch 응답 받음', res);  // 로그 추가
         return res.json();  // JSON으로 변환
     })
     .then(data => {
-        console.log("finish_game 응답:", data);
+        // console.log("finish_game 응답:", data);
 
         if (data.error) {
             alert("오류 발생: " + data.error);
