@@ -610,21 +610,33 @@ function endGame() {
 
 /** 원문 vs 인식문 차이 하이라이트 */
 function highlightDifferences(original, recognized) {
-    const maxLen = Math.max(original.length, recognized.length);
-    let resultHtml = "";
-    for (let i = 0; i < maxLen; i++) {
-        const oChar = original[i] || "";
-        const rChar = recognized[i] || "";
-        if (oChar === rChar) {
-            resultHtml += rChar;
+    const originalWords = original.split(' ');
+    const recognizedWords = recognized.split(' ');
+
+    let resultHtml = '';
+    let maxLength = Math.max(originalWords.length, recognizedWords.length);
+
+    for (let i = 0; i < maxLength; i++) {
+        const oWord = originalWords[i] || '';
+        const rWord = recognizedWords[i] || '';
+
+        if (oWord === rWord) {
+            // 단어가 같으면 그대로 출력
+            resultHtml += `${oWord} `;
         } else {
-            if (rChar) {
-                resultHtml += `<span class="mismatch">${rChar}</span>`;
+            if (rWord) {
+                // 단어가 다르면 빨간색으로 하이라이트
+                resultHtml += `<span class="mismatch">${rWord}</span> `;
+            }
+            if (oWord && rWord !== oWord) {
+                // 원문에만 있는 단어는 취소선 추가
+                resultHtml += `<span class="original-word">${oWord}</span> `;
             }
         }
     }
-    return resultHtml;
+    return resultHtml.trim();
 }
+
 
 /** 최종 점수 제출(서버가 /finish_game에서 계산) */
 function sendToGoogleSheets() {
