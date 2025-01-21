@@ -476,11 +476,17 @@ def finish_game():
         currentTimeStr = datetime.now().strftime("%Y. M. d %p %I:%M:%S")
         if existingEntry:
             oldScore = float(existingEntry.get("score", 0.0))
+            # 기존 점수보다 높은 점수가 나오면 점수 갱신
             existingEntry["score"] = max(oldScore, final_score)
             existingEntry["participationCount"] = existingEntry.get("participationCount", 1) + 1
             existingEntry["responseTime"] = currentTimeStr
             existingEntry["name"] = name
-            existingEntry["status"] = status_value
+
+            # 부정행위 상태인 사람은 정상 상태로 바뀌지 않음
+            if existingEntry["status"] == "부정행위":
+                existingEntry["status"] = "부정행위"  # 부정행위 상태를 유지
+            else:
+                existingEntry["status"] = status_value  # 정상 플레이인 경우 상태 갱신
         else:
             newEntry = {
                 "rank": 0,
