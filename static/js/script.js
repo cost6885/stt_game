@@ -59,7 +59,7 @@ let isIOS = false;    // iOS 여부 전역 변수 추가
 
 function detectDevice() {
     const userAgent = navigator.userAgent.toLowerCase();
-    
+
     isIOS = /iphone|ipad|ipod/.test(userAgent); // 전역 변수 isIOS에 설정
     const isAndroid = /android/.test(userAgent);
 
@@ -140,7 +140,7 @@ startGameBtn.addEventListener('click', () => {
 /** 마이크 테스트 버튼 */
 testMicBtn.addEventListener('click', async () => {
     // iOS Safari 한정으로 AudioContext를 이 시점에 생성
-    
+
     if (isIOS && !audioContext) { // 전역 변수 isIOS를 사용
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         await audioContext.resume(); 
@@ -251,7 +251,7 @@ function startGameSequence() {
 
         .then(response => response.json())
         .then(data => {
-            // console.log("서버에서 게임 시작 시간 설정 완료:", data);
+            console.log("서버에서 게임 시작 시간 설정 완료:", data);
 
             // 추가: data.authToken 수신 → 전역 변수나 어디든 저장
             window.authToken = data.authToken;
@@ -610,40 +610,27 @@ function endGame() {
 
 /** 원문 vs 인식문 차이 하이라이트 */
 function highlightDifferences(original, recognized) {
-    const originalWords = original.split(' ');
-    const recognizedWords = recognized.split(' ');
-
-    let resultHtml = '';
-    let maxLength = Math.max(originalWords.length, recognizedWords.length);
-
-    for (let i = 0; i < maxLength; i++) {
-        const oWord = originalWords[i] || '';
-        const rWord = recognizedWords[i] || '';
-
-        if (oWord === rWord) {
-            // 단어가 같으면 그대로 출력
-            resultHtml += `${oWord} `;
+    const maxLen = Math.max(original.length, recognized.length);
+    let resultHtml = "";
+    for (let i = 0; i < maxLen; i++) {
+        const oChar = original[i] || "";
+        const rChar = recognized[i] || "";
+        if (oChar === rChar) {
+            resultHtml += rChar;
         } else {
-            if (rWord) {
-                // 단어가 다르면 빨간색으로 하이라이트
-                resultHtml += `<span class="mismatch">${rWord}</span> `;
-            }
-            if (oWord && rWord !== oWord) {
-                // 원문에만 있는 단어는 취소선 추가
-                resultHtml += `<span class="original-word">${oWord}</span> `;
+            if (rChar) {
+                resultHtml += `<span class="mismatch">${rChar}</span>`;
             }
         }
     }
-    return resultHtml.trim();
+    return resultHtml;
 }
-
 
 /** 최종 점수 제출(서버가 /finish_game에서 계산) */
 function sendToGoogleSheets() {
     const company = document.getElementById('company').value.trim();
     const employeeId = document.getElementById('employeeId').value.trim();
     const name = document.getElementById('name').value.trim();
-    const submitButton = document.getElementById("submitButton"); // 제출 버튼
 
     if (!company || !employeeId || !name) {
         console.warn("모든 정보를 입력해주세요!");
@@ -657,29 +644,24 @@ function sendToGoogleSheets() {
         return;
     }
 
-    // 제출 버튼 비활성화
-    submitButton.disabled = true;
-
     // 서버에 회사/사번/이름만 전달
     fetch('/finish_game', {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            company,
-            employeeId,
-            name,
-            authToken: window.authToken,
-            roundScores: roundScores  // ← 추가
-        })
+          body: JSON.stringify({
+                company,
+                employeeId,
+                name,
+                authToken: window.authToken,
+                roundScores: roundScores  // ← 추가
+              })
     })
     .then(res => res.json())
     .then(data => {
-        // console.log("finish_game 응답:", data);
+        console.log("finish_game 응답:", data);
 
-        // 서버에서 오류 응답이 오면 버튼을 다시 활성화하고, 오류 메시지를 표시
         if (data.error) {
             alert("오류 발생: " + data.error);
-            submitButton.disabled = false; // 버튼 다시 활성화
             return;
         }
 
@@ -691,19 +673,12 @@ function sendToGoogleSheets() {
             alert("저장 중 일부 에러 발생");
             console.warn("localResult:", data.localResult, "sheetResult:", data.sheetResult);
         }
-
-        // 응답 후 버튼 다시 활성화
-        submitButton.disabled = false;
     })
     .catch(err => {
         console.error("finish_game 호출 오류:", err);
         alert("저장 중 오류 발생");
-
-        // 오류 발생 시 버튼을 다시 활성화
-        submitButton.disabled = false;
     });
 }
-
 
 /** 랭킹 보드: 상위 5명 */
 function displayRankings() {
@@ -848,7 +823,7 @@ function rankmore() {
 
             // rankmore() 부분 수정
             entireRankings.sort((a, b) => {
-                if (b.participationCount !== a.participationCount) {
+                if (b.participationCount !== a.participationCount) {                    
                     return b.participationCount - a.participationCount; // 참여횟수 내림차순
                 }
                 if (b.score !== a.score) {
@@ -856,9 +831,9 @@ function rankmore() {
                 }
                 const aTime = new Date(a.responseTime).getTime();
                 const bTime = new Date(b.responseTime).getTime();
+
                 return aTime - bTime; // 참여시각 오름차순
             });
-
 
             const container = popupDoc.getElementById('popup-ranking-board');
             container.innerHTML = '';
