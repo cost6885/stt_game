@@ -251,7 +251,7 @@ function startGameSequence() {
 
         .then(response => response.json())
         .then(data => {
-            console.log("서버에서 게임 시작 시간 설정 완료:", data);
+            // console.log("서버에서 게임 시작 시간 설정 완료:", data);
 
             // 추가: data.authToken 수신 → 전역 변수나 어디든 저장
             window.authToken = data.authToken;
@@ -662,7 +662,7 @@ function sendToGoogleSheets() {
     })
     .then(res => res.json())
     .then(data => {
-        console.log("finish_game 응답:", data);
+        // console.log("finish_game 응답:", data);
 
         // 서버에서 오류 응답이 오면 버튼을 다시 활성화하고, 오류 메시지를 표시
         if (data.error) {
