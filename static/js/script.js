@@ -51,6 +51,8 @@ const recognizedTextEl = document.getElementById('recognized-text');
 const scoreFeedbackTextEl = document.getElementById('score-feedback-text');
 const nextRoundBtn = document.getElementById('next-round-btn');
 
+let isSubmitting = false;  // 플래그 초기화
+
 let audioContext;
 
 let isMobile = false; // 전역 변수로 선언
@@ -628,8 +630,17 @@ function highlightDifferences(original, recognized) {
 
 /** 최종 점수 제출(서버가 /finish_game에서 계산) */
 function sendToGoogleSheets() {
+
+    // 이미 제출 중이면 함수 종료
+    if (isSubmitting) {
+        return;
+    }
+
+    
     const submitButton = document.querySelector('.sendform[onclick="sendToGoogleSheets()"]');
     submitButton.disabled = true;  // 버튼 비활성화
+    isSubmitting = true;  // 제출 중 상태로 변경
+    
     console.log('응모 버튼 클릭됨');  // 로그 추가
 
     const company = document.getElementById('company').value.trim();
@@ -639,6 +650,7 @@ function sendToGoogleSheets() {
     if (!company || !employeeId || !name) {
         console.warn("모든 정보를 입력해주세요!");
         submitButton.disabled = false;  // 비활성화된 버튼 다시 활성화
+        isSubmitting = false;  // 제출 상태 종료
         return;
     }
 
@@ -647,6 +659,7 @@ function sendToGoogleSheets() {
         alert("부정행위가 감지되었습니다. 다시 진행해주세요.");
         prapare();
         submitButton.disabled = false;  // 비활성화된 버튼 다시 활성화
+        isSubmitting = false;  // 제출 상태 종료
         return;
     }
 
@@ -674,6 +687,7 @@ function sendToGoogleSheets() {
         if (data.error) {
             alert("오류 발생: " + data.error);
             submitButton.disabled = false;  // 비활성화된 버튼 다시 활성화
+            isSubmitting = false;  // 제출 상태 종료
             return;
         }
 
@@ -687,11 +701,13 @@ function sendToGoogleSheets() {
         }
 
         submitButton.disabled = false;  // 비활성화된 버튼 다시 활성화
+        isSubmitting = false;  // 제출 상태 종료
     })
     .catch(err => {
         console.error("finish_game 호출 오류:", err);
         alert("저장 중 오류 발생");
         submitButton.disabled = false;  // 비활성화된 버튼 다시 활성화
+        isSubmitting = false;  // 제출 상태 종료
     });
 }
 
