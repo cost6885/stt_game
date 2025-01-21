@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서버 점검 중</title>
+    <style>
+        /* 화면 전체를 차지하는 스타일 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+        }
+
+        /* 점검 메시지 스타일 */
+        .message {
+            text-align: center;
+            padding: 20px;
+            background-color: #ffcc00;
+            border-radius: 8px;
+            color: #333;
+            font-size: 2rem;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .message p {
+            margin: 0;
+        }
+
+        .message .highlight {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="message">
+        <p>현재 서버 점검 중입니다.</p>
+        <p class="highlight">잠시 후 다시 시도해 주세요.</p>
+    </div>
+</body>
+</html>
