@@ -628,12 +628,17 @@ function highlightDifferences(original, recognized) {
 
 /** 최종 점수 제출(서버가 /finish_game에서 계산) */
 function sendToGoogleSheets() {
+    const submitButton = document.querySelector('.sendform[onclick="sendToGoogleSheets()"]');
+    submitButton.disabled = true;  // 버튼 비활성화
+    console.log('응모 버튼 클릭됨');  // 로그 추가
+
     const company = document.getElementById('company').value.trim();
     const employeeId = document.getElementById('employeeId').value.trim();
     const name = document.getElementById('name').value.trim();
 
     if (!company || !employeeId || !name) {
         console.warn("모든 정보를 입력해주세요!");
+        submitButton.disabled = false;  // 비활성화된 버튼 다시 활성화
         return;
     }
 
@@ -641,27 +646,34 @@ function sendToGoogleSheets() {
     if (isCheating()) {
         alert("부정행위가 감지되었습니다. 다시 진행해주세요.");
         prapare();
+        submitButton.disabled = false;  // 비활성화된 버튼 다시 활성화
         return;
     }
+
+    console.log('fetch 요청 전');  // 로그 추가
 
     // 서버에 회사/사번/이름만 전달
     fetch('/finish_game', {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-                company,
-                employeeId,
-                name,
-                authToken: window.authToken,
-                roundScores: roundScores  // ← 추가
-              })
+        body: JSON.stringify({
+            company,
+            employeeId,
+            name,
+            authToken: window.authToken,
+            roundScores: roundScores  // ← 추가
+        })
     })
-    .then(res => res.json())
+    .then(res => {
+        console.log('fetch 응답 받음', res);  // 로그 추가
+        return res.json();  // JSON으로 변환
+    })
     .then(data => {
         console.log("finish_game 응답:", data);
 
         if (data.error) {
             alert("오류 발생: " + data.error);
+            submitButton.disabled = false;  // 비활성화된 버튼 다시 활성화
             return;
         }
 
@@ -673,12 +685,16 @@ function sendToGoogleSheets() {
             alert("저장 중 일부 에러 발생");
             console.warn("localResult:", data.localResult, "sheetResult:", data.sheetResult);
         }
+
+        submitButton.disabled = false;  // 비활성화된 버튼 다시 활성화
     })
     .catch(err => {
         console.error("finish_game 호출 오류:", err);
         alert("저장 중 오류 발생");
+        submitButton.disabled = false;  // 비활성화된 버튼 다시 활성화
     });
 }
+
 
 /** 랭킹 보드: 상위 5명 */
 function displayRankings() {
