@@ -196,10 +196,6 @@
             line-height: 1.4;
             margin: 15px 0;
         }
-        .mismatch {
-            color: red; /* 인식이 틀린 부분 빨간색 */
-            font-weight: bold;
-        }
 
         /* formContainer 기본 스타일은 그대로 유지 */
         #formContainer {
@@ -525,7 +521,17 @@
             margin-left: 0px; /* 본문을 들여쓰기 */
             text-indent: -20px; /* 번호를 좌측으로 내림 */
         }
+
+
+        .mismatch {
+            color: red;  /* 틀린 부분을 빨간색으로 */
+            font-weight: bold;  /* 강조를 위해 글씨를 두껍게 */
+        }
         
+        .original-word {
+            text-decoration: line-through;  /* 원문에만 존재하는 부분은 취소선 추가 */
+            color: gray;  /* 원문에만 있는 단어는 회색으로 표시 */
+        }
         
     </style>
 </head>
