@@ -422,8 +422,7 @@ def test_local_rankings():
 @app.route('/finish_game', methods=['POST'])
 def finish_game():
     data = request.get_json() or {}
-
-    ###### [삭제] game_id = data.get("gameId", "")
+    
     auth_token = data.get("authToken", "")
     round_scores = data.get("roundScores", [])
     company = data.get("company", "")
